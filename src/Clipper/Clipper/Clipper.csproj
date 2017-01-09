@@ -40,7 +40,21 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Clipper.cs" />
+    <Compile Include="ClippingHelper.cs" />
+    <Compile Include="DoublePoint.cs" />
+    <Compile Include="GeometryHelper.cs" />
+    <Compile Include="IClipSolution.cs" />
+    <Compile Include="IntPoint.cs" />
+    <Compile Include="NodeType.cs" />
+    <Compile Include="Polygon.cs" />
+    <Compile Include="PolygonOrientation.cs" />
+    <Compile Include="PolygonPath.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SolutonType.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="README.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
