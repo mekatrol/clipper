@@ -5,3 +5,5 @@
 obj
 bin
 /src/Clipper/packages
+/src/Clipper/TestResults
+/.vs
