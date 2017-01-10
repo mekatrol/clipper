@@ -44,14 +44,32 @@
     <Reference Include="Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\MSTest.TestFramework.1.0.5-preview\lib\net45\Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClipExecutionData.cs" />
+    <Compile Include="ClipOperation.cs" />
+    <Compile Include="PerformanceRunnerTests.cs" />
+    <Compile Include="Point.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestPolygons.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="TestData\ComplexPolygons.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\LargePolygons.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\SimplePolygons.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ClipperLegacy\ClipperLegacy.csproj">
