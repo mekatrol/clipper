@@ -2,8 +2,13 @@
 
 namespace Clipper
 {
-    public class ClippingHelper
+    public static class ClippingHelper
     {
+        internal const double Horizontal = -3.4E+38;
+        internal const int Skip = -2;
+        internal const int Unassigned = -1;
+        internal const double Tolerance = 1.0E-20;
+
         public static bool Execute<T>(
             ClipOperation operation,
             PolygonPath subject,
@@ -13,8 +18,8 @@ namespace Clipper
         {
             var clipper = new Clipper { StrictlySimple = simplify };
 
-            if (subject != null) { clipper.AddPaths(subject, PolyType.Subject); }
-            if (clip != null) { clipper.AddPaths(clip, PolyType.Clip); }
+            if (subject != null) { clipper.AddPaths(subject, PolygonKind.Subject); }
+            if (clip != null) { clipper.AddPaths(clip, PolygonKind.Clip); }
 
             switch (solution.SolutionType)
             {

@@ -134,8 +134,8 @@ namespace PerformanceTests
                     var solution = new Clipper.PolygonTree();
                     var clipper = new Clipper.Clipper();
 
-                    clipper.AddPaths(subject, Clipper.PolyType.Subject);
-                    clipper.AddPaths(clip, Clipper.PolyType.Clip);
+                    clipper.AddPaths(subject, Clipper.PolygonKind.Subject);
+                    clipper.AddPaths(clip, Clipper.PolygonKind.Clip);
 
                     // Convert performance test library operation enum to Clipper operation enum.
                     var operation = (Clipper.ClipOperation)Enum.Parse(typeof(Clipper.ClipOperation), clipPath.Operation.ToString(), true);

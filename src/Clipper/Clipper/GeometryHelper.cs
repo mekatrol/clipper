@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Clipper
 {
     public static class GeometryHelper
     {
-        public const double Tolerance = double.Epsilon;
+        public const double Tolerance = Double.Epsilon;
         public const double PolygonScaleConstant = 1E7;
         public const double PolygonScaleInverseConstant = 1 / PolygonScaleConstant;
         public const double PolygonColinearityScaleConstant = 1000.0 * PolygonScaleConstant;
@@ -55,7 +56,14 @@ namespace Clipper
 
         public static bool NearZero(double val)
         {
-            return (val > -Tolerance) && (val < Tolerance);
+            return val > -Tolerance && val < Tolerance;
+        }
+
+        public static void Swap(ref long val1, ref long val2)
+        {
+            var tmp = val1;
+            val1 = val2;
+            val2 = tmp;
         }
     }
 }
