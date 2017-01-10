@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using Newtonsoft.Json;
 
@@ -12,7 +13,14 @@ namespace PerformanceTests
         {
             var filename = $"TestData\\{name}";
 
-            using (var r = new StreamReader(filename))
+            // Decompress ZIP to same directory
+            var archive = ZipFile.OpenRead(filename);
+            var entry = archive.Entries.FirstOrDefault();
+            var unzippedFilename = Path.ChangeExtension(filename, "json");
+            entry.ExtractToFile(unzippedFilename, true);
+
+            // Deserialize json file
+            using (var r = new StreamReader(unzippedFilename))
             {
                 using (JsonReader reader = new JsonTextReader(r))
                 {

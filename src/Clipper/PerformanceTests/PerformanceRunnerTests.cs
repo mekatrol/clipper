@@ -47,7 +47,7 @@ namespace PerformanceTests
         [TestMethod]
         public void SimplePolygonTest()
         {
-            var paths = TestPolygons.LoadPaths("SimplePolygons.json");
+            var paths = TestPolygons.LoadPaths("SimplePolygons.zip");
 
             var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
@@ -72,7 +72,7 @@ namespace PerformanceTests
         [TestMethod]
         public void ComplexPolygonTest()
         {
-            var paths = TestPolygons.LoadPaths("ComplexPolygons.json");
+            var paths = TestPolygons.LoadPaths("ComplexPolygons.zip");
 
             var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
@@ -96,7 +96,7 @@ namespace PerformanceTests
         [TestMethod]
         public void LargePolygonTest()
         {
-            var paths = TestPolygons.LoadPaths("LargePolygons.json");
+            var paths = TestPolygons.LoadPaths("LargePolygons.zip");
 
             var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
