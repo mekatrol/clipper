@@ -45,6 +45,7 @@
     <Compile Include="DoublePoint.cs" />
     <Compile Include="GeometryHelper.cs" />
     <Compile Include="IClipSolution.cs" />
+    <Compile Include="Int128.cs" />
     <Compile Include="IntPoint.cs" />
     <Compile Include="NodeType.cs" />
     <Compile Include="Polygon.cs" />
