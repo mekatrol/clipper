@@ -11,7 +11,17 @@ namespace PerformanceTests
         public static List<ClipExecutionData> LoadPaths(string name)
         {
             var filename = $"TestData\\{name}";
-            return JsonConvert.DeserializeObject<List<ClipExecutionData>>(File.ReadAllText(filename));
+
+            using (var r = new StreamReader(filename))
+            {
+                using (JsonReader reader = new JsonTextReader(r))
+                {
+                    var serializer = new JsonSerializer();
+                    return serializer.Deserialize<List<ClipExecutionData>>(reader);
+                }
+            }
+
+            //return JsonConvert.DeserializeObject<List<ClipExecutionData>>(File.ReadAllText(filename));
         }
 
         public static List<ClipExecutionData> BuildRandomSimplePaths()
@@ -190,23 +200,6 @@ namespace PerformanceTests
         {
             var r = new Random((int)DateTime.Now.Ticks);
 
-            // 10 thousand vertices in each polygon.
-            const int vertexCount = 10000;
-
-            // Generate random points for polygon1
-            var polygon1 = Enumerable.Range(0, vertexCount)
-                .Select(i => new Point(
-                    r.Next(-100000, +10000) / 10.0,
-                    r.Next(-100000, +10000) / 10.0))
-                .ToList();
-
-            // Generate random points for polygon2
-            var polygon2 = Enumerable.Range(0, vertexCount)
-                .Select(i => new Point(
-                    r.Next(-100000, +10000) / 10.0,
-                    r.Next(-100000, +10000) / 10.0))
-                .ToList();
-
             // 100 polygon paths
             const int pathCount = 100;
 
@@ -220,36 +213,80 @@ namespace PerformanceTests
                 .Select(i => r.NextDouble())
                 .ToArray();
 
-            var stars = new List<List<Point>>();
-            var squares = new List<List<Point>>();
-
-            foreach (var scale in scales)
+            var binary = File.ReadAllBytes("TestData\\aust.bin");
+            var polygons = new List<List<Point>>();
+            using (var stream = new BinaryReader(new MemoryStream(binary)))
             {
-                stars.Add(polygon2.Select(s => s * scale).ToList());
-                squares.Add(polygon1.Select(s => s * scale).ToList());
+                var polygonCount = stream.ReadInt32();
+
+                for (var i = 0; i < polygonCount; ++i)
+                {
+                    var vertexCount = stream.ReadInt32();
+                    var polygon = new List<Point>(vertexCount);
+
+                    for (var j = 0; j < vertexCount; ++j)
+                    {
+                        var x = stream.ReadSingle();
+                        var y = stream.ReadSingle();
+                        polygon.Add(new Point(x, y));
+                    }
+
+                    polygons.Add(polygon);
+                }
             }
 
-            var paths = Enumerable
-                .Range(0, pathCount)
-                .Select(i =>
-                    new ClipExecutionData
-                    {
-                        Subject = new List<List<Point>>(new[] {
-                            probabilities[i] >= 0.5
-                            ? stars[i]
-                            : squares [i]
-                        }),
-                        Clip = new List<List<Point>>(new[] {
-                            probabilities[i] >= 0.5
-                            ? squares[i]
-                            : stars [i]
-                        }),
-                        Operation =
-                            probabilities[i] >= 0.75 ? ClipOperation.Xor :
-                            probabilities[i] >= 0.50 ? ClipOperation.Union :
-                            probabilities[i] >= 0.25 ? ClipOperation.Intersection : ClipOperation.Difference
-                    })
-                .ToList();
+            var minX = double.MaxValue;
+            var maxX = double.MinValue;
+            var minY = double.MaxValue;
+            var maxY = double.MinValue;
+
+            foreach (var polygon in polygons)
+            {
+                foreach (var point in polygon)
+                {
+                    minX = Math.Min(minX, point.X);
+                    maxX = Math.Max(maxX, point.X);
+                    minY = Math.Min(minY, point.Y);
+                    maxY = Math.Max(maxY, point.Y);
+                }
+            }
+
+            var australia = polygons;
+            var australiaInverted = new List<List<Point>>();
+
+            foreach (var polygon in polygons)
+            {
+                var invertedPolygon = new List<Point>();
+
+                for (var j = 0; j < polygon.Count; j++)
+                {
+                    invertedPolygon.Add(new Point(polygon[j].X, minY + (maxY - polygon[j].Y)));
+                }
+
+                australiaInverted.Add(invertedPolygon);
+            }
+
+            var paths = scales.Select((scale, i) => new ClipExecutionData
+            {
+                Subject = australia
+                    .Select(polygon => 
+                        polygon
+                            .Select(point => point * scale)
+                            .ToList())
+                    .ToList(),
+
+                Clip = australiaInverted
+                    .Select(polygon => 
+                        polygon
+                            .Select(point => point * scale)
+                            .ToList())
+                    .ToList(),
+
+                Operation = 
+                    probabilities[i] >= 0.75 ? ClipOperation.Xor : 
+                    probabilities[i] >= 0.50 ? ClipOperation.Union : 
+                    probabilities[i] >= 0.25 ? ClipOperation.Intersection : ClipOperation.Difference
+            }).ToList();
 
             var json = JsonConvert.SerializeObject(paths, Formatting.Indented);
             File.WriteAllText("LargePolygons.json", json);

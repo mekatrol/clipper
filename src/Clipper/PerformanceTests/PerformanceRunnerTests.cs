@@ -49,8 +49,8 @@ namespace PerformanceTests
         {
             var paths = TestPolygons.LoadPaths("SimplePolygons.json");
 
-            var refactoredClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths); //ExecuteRefactoredClipper(TestIterationCount, paths);
             var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
+            var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
             var pct = refactoredClipperExecutionTime / (double)legacyClipperExecutionTime;
 
@@ -72,13 +72,13 @@ namespace PerformanceTests
         [TestMethod]
         public void ComplexPolygonTest()
         {
-            var paths = TestPolygons.BuildRandomComplexPaths();
+            var paths = TestPolygons.LoadPaths("ComplexPolygons.json");
 
             var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
             var pct = refactoredClipperExecutionTime / (double)legacyClipperExecutionTime;
-
+             
             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
 
@@ -96,14 +96,14 @@ namespace PerformanceTests
         [TestMethod]
         public void LargePolygonTest()
         {
-            var paths = TestPolygons.BuildRandomLargePaths();
+            var paths = TestPolygons.LoadPaths("LargePolygons.json");
 
             var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
             var pct = refactoredClipperExecutionTime / (double)legacyClipperExecutionTime;
 
-            Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
+             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
 
         public static long ExecuteRefactoredClipper(int testIterationCount, List<ClipExecutionData> executionData)
@@ -132,10 +132,14 @@ namespace PerformanceTests
                                         pt.Y * Scale)))));
 
                     var solution = new Clipper.PolyTree();
+                    var clipper = new Clipper.Clipper();
+
+                    clipper.AddPaths(subject, Clipper.PolyType.Subject);
+                    clipper.AddPaths(clip, Clipper.PolyType.Clip);
 
                     // Convert performance test library operation enum to Clipper operation enum.
                     var operation = (Clipper.ClipOperation)Enum.Parse(typeof(Clipper.ClipOperation), clipPath.Operation.ToString(), true);
-                    Assert.IsTrue(Clipper.ClippingHelper.Execute(operation, subject, clip, solution, true));
+                    Assert.IsTrue(clipper.Execute(operation, solution));
                 }
             }
 
