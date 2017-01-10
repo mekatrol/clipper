@@ -47,6 +47,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 //using System.Text;          //for Int128.AsString() & StringBuilder
 //using System.IO;            //debugging with streamReader & StreamWriter
@@ -54,125 +55,6 @@ using System.Collections.Generic;
 
 namespace Clipper
 {
-
-    //------------------------------------------------------------------------------
-    // PolyTree & PolyNode classes
-    //------------------------------------------------------------------------------
-
-    public class PolyTree : PolyNode, IClipSolution
-    {
-        internal List<PolyNode> m_AllPolys = new List<PolyNode>();
-
-        public SolutonType SolutionType => SolutonType.Tree;
-
-        //The GC probably handles this cleanup more efficiently ...
-        //~PolyTree(){Clear();}
-
-        public void Clear()
-        {
-            for (int i = 0; i < m_AllPolys.Count; i++)
-                m_AllPolys[i] = null;
-            m_AllPolys.Clear();
-            m_Childs.Clear();
-        }
-
-        public PolyNode GetFirst()
-        {
-            if (m_Childs.Count > 0)
-                return m_Childs[0];
-            else
-                return null;
-        }
-
-        public int Total
-        {
-            get
-            {
-                int result = m_AllPolys.Count;
-                //with negative offsets, ignore the hidden outer polygon ...
-                if (result > 0 && m_Childs[0] != m_AllPolys[0]) result--;
-                return result;
-            }
-        }
-
-    }
-
-    public class PolyNode
-    {
-        internal PolyNode m_Parent;
-        internal Polygon m_polygon = new Polygon();
-        internal int m_Index;
-        internal JoinType m_jointype;
-        internal EndType m_endtype;
-        internal List<PolyNode> m_Childs = new List<PolyNode>();
-
-        private bool IsHoleNode()
-        {
-            bool result = true;
-            PolyNode node = m_Parent;
-            while (node != null)
-            {
-                result = !result;
-                node = node.m_Parent;
-            }
-            return result;
-        }
-
-        public int ChildCount
-        {
-            get { return m_Childs.Count; }
-        }
-
-        public Polygon Contour
-        {
-            get { return m_polygon; }
-        }
-
-        internal void AddChild(PolyNode Child)
-        {
-            int cnt = m_Childs.Count;
-            m_Childs.Add(Child);
-            Child.m_Parent = this;
-            Child.m_Index = cnt;
-        }
-
-        public PolyNode GetNext()
-        {
-            if (m_Childs.Count > 0)
-                return m_Childs[0];
-            else
-                return GetNextSiblingUp();
-        }
-
-        internal PolyNode GetNextSiblingUp()
-        {
-            if (m_Parent == null)
-                return null;
-            else if (m_Index == m_Parent.m_Childs.Count - 1)
-                return m_Parent.GetNextSiblingUp();
-            else
-                return m_Parent.m_Childs[m_Index + 1];
-        }
-
-        public List<PolyNode> Childs
-        {
-            get { return m_Childs; }
-        }
-
-        public PolyNode Parent
-        {
-            get { return m_Parent; }
-        }
-
-        public bool IsHole
-        {
-            get { return IsHoleNode(); }
-        }
-
-        public bool IsOpen { get; set; }
-    }
-
-
     //------------------------------------------------------------------------------
     // Int128 struct (enables safe math on signed 64bit integers)
     // eg Int128 val1((Int64)9223372036854775807); //ie 2^63 -1
@@ -424,7 +306,7 @@ namespace Clipper
         internal OutRec FirstLeft; //see comments in clipper.pas
         internal OutPt Pts;
         internal OutPt BottomPt;
-        internal PolyNode PolyNode;
+        internal PolygonNode PolygonNode;
     };
 
     internal class OutPt
@@ -1132,7 +1014,7 @@ namespace Clipper
             result.FirstLeft = null;
             result.Pts = null;
             result.BottomPt = null;
-            result.PolyNode = null;
+            result.PolygonNode = null;
             m_PolyOuts.Add(result);
             result.Idx = m_PolyOuts.Count - 1;
             return result;
@@ -1337,7 +1219,7 @@ namespace Clipper
         }
         //------------------------------------------------------------------------------
 
-        public bool Execute(ClipOperation clipOperation, PolyTree polytree,
+        public bool Execute(ClipOperation clipOperation, PolygonTree polytree,
             PolyFillType FillType = PolyFillType.EvenOdd)
         {
             return Execute(clipOperation, polytree, FillType, FillType);
@@ -1349,7 +1231,7 @@ namespace Clipper
         {
             if (m_ExecuteLocked) return false;
             if (m_HasOpenPaths) throw
-              new ClipperException("Error: PolyTree struct is needed for open path clipping.");
+              new ClipperException("Error: PolygonTree struct is needed for open path clipping.");
 
             m_ExecuteLocked = true;
             solution.Clear();
@@ -1373,7 +1255,7 @@ namespace Clipper
         }
         //------------------------------------------------------------------------------
 
-        public bool Execute(ClipOperation clipOperation, PolyTree polytree,
+        public bool Execute(ClipOperation clipOperation, PolygonTree polytree,
             PolyFillType subjFillType, PolyFillType clipFillType)
         {
             if (m_ExecuteLocked) return false;
@@ -3236,12 +3118,12 @@ namespace Clipper
         }
         //------------------------------------------------------------------------------
 
-        private void BuildResult2(PolyTree polytree)
+        private void BuildResult2(PolygonTree polytree)
         {
             polytree.Clear();
 
             //add each output polygon/contour to polytree ...
-            polytree.m_AllPolys.Capacity = m_PolyOuts.Count;
+            polytree.AllPolygons.Capacity = m_PolyOuts.Count;
             for (int i = 0; i < m_PolyOuts.Count; i++)
             {
                 OutRec outRec = m_PolyOuts[i];
@@ -3249,34 +3131,34 @@ namespace Clipper
                 if ((outRec.IsOpen && cnt < 2) ||
                   (!outRec.IsOpen && cnt < 3)) continue;
                 FixHoleLinkage(outRec);
-                PolyNode pn = new PolyNode();
-                polytree.m_AllPolys.Add(pn);
-                outRec.PolyNode = pn;
-                pn.m_polygon.Capacity = cnt;
+                PolygonNode pn = new PolygonNode();
+                polytree.AllPolygons.Add(pn);
+                outRec.PolygonNode = pn;
+                pn.Polygon.Capacity = cnt;
                 OutPt op = outRec.Pts.Prev;
                 for (int j = 0; j < cnt; j++)
                 {
-                    pn.m_polygon.Add(op.Pt);
+                    pn.Polygon.Add(op.Pt);
                     op = op.Prev;
                 }
             }
 
-            //fixup PolyNode links etc ...
-            polytree.m_Childs.Capacity = m_PolyOuts.Count;
+            //fixup PolygonNode links etc ...
+            polytree.Children.Capacity = m_PolyOuts.Count;
             for (int i = 0; i < m_PolyOuts.Count; i++)
             {
                 OutRec outRec = m_PolyOuts[i];
-                if (outRec.PolyNode == null) continue;
+                if (outRec.PolygonNode == null) continue;
                 else if (outRec.IsOpen)
                 {
-                    outRec.PolyNode.IsOpen = true;
-                    polytree.AddChild(outRec.PolyNode);
+                    outRec.PolygonNode.IsOpen = true;
+                    polytree.AddChild(outRec.PolygonNode);
                 }
                 else if (outRec.FirstLeft != null &&
-                  outRec.FirstLeft.PolyNode != null)
-                    outRec.FirstLeft.PolyNode.AddChild(outRec.PolyNode);
+                  outRec.FirstLeft.PolygonNode != null)
+                    outRec.FirstLeft.PolygonNode.AddChild(outRec.PolygonNode);
                 else
-                    polytree.AddChild(outRec.PolyNode);
+                    polytree.AddChild(outRec.PolygonNode);
             }
         }
         //------------------------------------------------------------------------------
@@ -4249,18 +4131,17 @@ namespace Clipper
         }
         //------------------------------------------------------------------------------
 
-        
-        public static PolygonPath PolyTreeToPaths(PolyTree polytree)
+
+        public static PolygonPath PolyTreeToPaths(PolygonTree polytree)
         {
 
-            PolygonPath result = new PolygonPath();
-            result.Capacity = polytree.Total;
+            var result = new PolygonPath { Capacity = polytree.Children.Count };
             AddPolyNodeToPaths(polytree, NodeType.Any, result);
             return result;
         }
         //------------------------------------------------------------------------------
 
-        internal static void AddPolyNodeToPaths(PolyNode polynode, NodeType nt, PolygonPath paths)
+        internal static void AddPolyNodeToPaths(PolygonNode polynode, NodeType nt, PolygonPath paths)
         {
             bool match = true;
             switch (nt)
@@ -4270,28 +4151,24 @@ namespace Clipper
                 default: break;
             }
 
-            if (polynode.m_polygon.Count > 0 && match)
-                paths.Add(polynode.m_polygon);
-            foreach (PolyNode pn in polynode.Childs)
+            if (polynode.Polygon.Count > 0 && match)
+                paths.Add(polynode.Polygon);
+            foreach (PolygonNode pn in polynode.Children)
                 AddPolyNodeToPaths(pn, nt, paths);
         }
         //------------------------------------------------------------------------------
 
-        public static PolygonPath OpenPathsFromPolyTree(PolyTree polytree)
+        public static PolygonPath OpenPathsFromPolyTree(PolygonTree polytree)
         {
-            PolygonPath result = new PolygonPath();
-            result.Capacity = polytree.ChildCount;
-            for (int i = 0; i < polytree.ChildCount; i++)
-                if (polytree.Childs[i].IsOpen)
-                    result.Add(polytree.Childs[i].m_polygon);
+            var result = new PolygonPath { Capacity = polytree.Children.Count };
+            result.AddRange(from node in polytree.Children where node.IsOpen select node.Polygon);
             return result;
         }
         //------------------------------------------------------------------------------
 
-        public static PolygonPath ClosedPathsFromPolyTree(PolyTree polytree)
+        public static PolygonPath ClosedPathsFromPolyTree(PolygonTree polytree)
         {
-            PolygonPath result = new PolygonPath();
-            result.Capacity = polytree.Total;
+            var result = new PolygonPath { Capacity = polytree.Children.Count };
             AddPolyNodeToPaths(polytree, NodeType.Closed, result);
             return result;
         }
@@ -4309,7 +4186,7 @@ namespace Clipper
         private double m_miterLim, m_StepsPerRad;
 
         private IntPoint m_lowest;
-        private PolyNode m_polyNodes = new PolyNode();
+        private PolygonNode _mPolygonNodes = new PolygonNode();
 
         public double ArcTolerance { get; set; }
         public double MiterLimit { get; set; }
@@ -4328,7 +4205,7 @@ namespace Clipper
 
         public void Clear()
         {
-            m_polyNodes.Childs.Clear();
+            _mPolygonNodes.Children.Clear();
             m_lowest.X = -1;
         }
         //------------------------------------------------------------------------------
@@ -4343,40 +4220,40 @@ namespace Clipper
         {
             int highI = path.Count - 1;
             if (highI < 0) return;
-            PolyNode newNode = new PolyNode();
-            newNode.m_jointype = joinType;
-            newNode.m_endtype = endType;
+            PolygonNode newNode = new PolygonNode();
+            newNode.JoinType = joinType;
+            newNode.EndType = endType;
 
             //strip duplicate points from path and also get index to the lowest point ...
             if (endType == EndType.ClosedLine || endType == EndType.ClosedPolygon)
                 while (highI > 0 && path[0] == path[highI]) highI--;
-            newNode.m_polygon.Capacity = highI + 1;
-            newNode.m_polygon.Add(path[0]);
+            newNode.Polygon.Capacity = highI + 1;
+            newNode.Polygon.Add(path[0]);
             int j = 0, k = 0;
             for (int i = 1; i <= highI; i++)
-                if (newNode.m_polygon[j] != path[i])
+                if (newNode.Polygon[j] != path[i])
                 {
                     j++;
-                    newNode.m_polygon.Add(path[i]);
-                    if (path[i].Y > newNode.m_polygon[k].Y ||
-                      (path[i].Y == newNode.m_polygon[k].Y &&
-                      path[i].X < newNode.m_polygon[k].X)) k = j;
+                    newNode.Polygon.Add(path[i]);
+                    if (path[i].Y > newNode.Polygon[k].Y ||
+                      (path[i].Y == newNode.Polygon[k].Y &&
+                      path[i].X < newNode.Polygon[k].X)) k = j;
                 }
             if (endType == EndType.ClosedPolygon && j < 2) return;
 
-            m_polyNodes.AddChild(newNode);
+            _mPolygonNodes.AddChild(newNode);
 
             //if this path's lowest pt is lower than all the others then update m_lowest
             if (endType != EndType.ClosedPolygon) return;
             if (m_lowest.X < 0)
-                m_lowest = new IntPoint(m_polyNodes.ChildCount - 1, k);
+                m_lowest = new IntPoint(_mPolygonNodes.Children.Count - 1, k);
             else
             {
-                IntPoint ip = m_polyNodes.Childs[(int)m_lowest.X].m_polygon[(int)m_lowest.Y];
-                if (newNode.m_polygon[k].Y > ip.Y ||
-                  (newNode.m_polygon[k].Y == ip.Y &&
-                  newNode.m_polygon[k].X < ip.X))
-                    m_lowest = new IntPoint(m_polyNodes.ChildCount - 1, k);
+                IntPoint ip = _mPolygonNodes.Children[(int)m_lowest.X].Polygon[(int)m_lowest.Y];
+                if (newNode.Polygon[k].Y > ip.Y ||
+                  (newNode.Polygon[k].Y == ip.Y &&
+                  newNode.Polygon[k].X < ip.X))
+                    m_lowest = new IntPoint(_mPolygonNodes.Children.Count - 1, k);
             }
         }
         //------------------------------------------------------------------------------
@@ -4393,25 +4270,25 @@ namespace Clipper
             //fixup orientations of all closed paths if the orientation of the
             //closed path with the lowermost vertex is wrong ...
             if (m_lowest.X >= 0 &&
-              !Clipper.Orientation(m_polyNodes.Childs[(int)m_lowest.X].m_polygon))
+              !Clipper.Orientation(_mPolygonNodes.Children[(int)m_lowest.X].Polygon))
             {
-                for (int i = 0; i < m_polyNodes.ChildCount; i++)
+                for (int i = 0; i < _mPolygonNodes.Children.Count; i++)
                 {
-                    PolyNode node = m_polyNodes.Childs[i];
-                    if (node.m_endtype == EndType.ClosedPolygon ||
-                      (node.m_endtype == EndType.ClosedLine &&
-                      Clipper.Orientation(node.m_polygon)))
-                        node.m_polygon.Reverse();
+                    PolygonNode node = _mPolygonNodes.Children[i];
+                    if (node.EndType == EndType.ClosedPolygon ||
+                      (node.EndType == EndType.ClosedLine &&
+                      Clipper.Orientation(node.Polygon)))
+                        node.Polygon.Reverse();
                 }
             }
             else
             {
-                for (int i = 0; i < m_polyNodes.ChildCount; i++)
+                for (int i = 0; i < _mPolygonNodes.Children.Count; i++)
                 {
-                    PolyNode node = m_polyNodes.Childs[i];
-                    if (node.m_endtype == EndType.ClosedLine &&
-                      !Clipper.Orientation(node.m_polygon))
-                        node.m_polygon.Reverse();
+                    PolygonNode node = _mPolygonNodes.Children[i];
+                    if (node.EndType == EndType.ClosedLine &&
+                      !Clipper.Orientation(node.Polygon))
+                        node.Polygon.Reverse();
                 }
             }
         }
@@ -4439,12 +4316,12 @@ namespace Clipper
             //if Zero offset, just copy any CLOSED polygons to m_p and return ...
             if (ClipperBase.near_zero(delta))
             {
-                m_destPolys.Capacity = m_polyNodes.ChildCount;
-                for (int i = 0; i < m_polyNodes.ChildCount; i++)
+                m_destPolys.Capacity = _mPolygonNodes.Children.Count;
+                for (int i = 0; i < _mPolygonNodes.Children.Count; i++)
                 {
-                    PolyNode node = m_polyNodes.Childs[i];
-                    if (node.m_endtype == EndType.ClosedPolygon)
-                        m_destPolys.Add(node.m_polygon);
+                    PolygonNode node = _mPolygonNodes.Children[i];
+                    if (node.EndType == EndType.ClosedPolygon)
+                        m_destPolys.Add(node.Polygon);
                 }
                 return;
             }
@@ -4467,23 +4344,23 @@ namespace Clipper
             m_StepsPerRad = steps / two_pi;
             if (delta < 0.0) m_sin = -m_sin;
 
-            m_destPolys.Capacity = m_polyNodes.ChildCount * 2;
-            for (int i = 0; i < m_polyNodes.ChildCount; i++)
+            m_destPolys.Capacity = _mPolygonNodes.Children.Count * 2;
+            for (int i = 0; i < _mPolygonNodes.Children.Count; i++)
             {
-                PolyNode node = m_polyNodes.Childs[i];
-                m_srcPoly = node.m_polygon;
+                PolygonNode node = _mPolygonNodes.Children[i];
+                m_srcPoly = node.Polygon;
 
                 int len = m_srcPoly.Count;
 
                 if (len == 0 || (delta <= 0 && (len < 3 ||
-                  node.m_endtype != EndType.ClosedPolygon)))
+                  node.EndType != EndType.ClosedPolygon)))
                     continue;
 
                 m_destPoly = new Polygon();
 
                 if (len == 1)
                 {
-                    if (node.m_jointype == JoinType.Round)
+                    if (node.JoinType == JoinType.Round)
                     {
                         double X = 1.0, Y = 0.0;
                         for (int j = 1; j <= steps; j++)
@@ -4518,24 +4395,24 @@ namespace Clipper
                 m_normals.Capacity = len;
                 for (int j = 0; j < len - 1; j++)
                     m_normals.Add(GetUnitNormal(m_srcPoly[j], m_srcPoly[j + 1]));
-                if (node.m_endtype == EndType.ClosedLine ||
-                  node.m_endtype == EndType.ClosedPolygon)
+                if (node.EndType == EndType.ClosedLine ||
+                  node.EndType == EndType.ClosedPolygon)
                     m_normals.Add(GetUnitNormal(m_srcPoly[len - 1], m_srcPoly[0]));
                 else
                     m_normals.Add(new DoublePoint(m_normals[len - 2]));
 
-                if (node.m_endtype == EndType.ClosedPolygon)
+                if (node.EndType == EndType.ClosedPolygon)
                 {
                     int k = len - 1;
                     for (int j = 0; j < len; j++)
-                        OffsetPoint(j, ref k, node.m_jointype);
+                        OffsetPoint(j, ref k, node.JoinType);
                     m_destPolys.Add(m_destPoly);
                 }
-                else if (node.m_endtype == EndType.ClosedLine)
+                else if (node.EndType == EndType.ClosedLine)
                 {
                     int k = len - 1;
                     for (int j = 0; j < len; j++)
-                        OffsetPoint(j, ref k, node.m_jointype);
+                        OffsetPoint(j, ref k, node.JoinType);
                     m_destPolys.Add(m_destPoly);
                     m_destPoly = new Polygon();
                     //re-build m_normals ...
@@ -4545,17 +4422,17 @@ namespace Clipper
                     m_normals[0] = new DoublePoint(-n.X, -n.Y);
                     k = 0;
                     for (int j = len - 1; j >= 0; j--)
-                        OffsetPoint(j, ref k, node.m_jointype);
+                        OffsetPoint(j, ref k, node.JoinType);
                     m_destPolys.Add(m_destPoly);
                 }
                 else
                 {
                     int k = 0;
                     for (int j = 1; j < len - 1; ++j)
-                        OffsetPoint(j, ref k, node.m_jointype);
+                        OffsetPoint(j, ref k, node.JoinType);
 
                     IntPoint pt1;
-                    if (node.m_endtype == EndType.OpenButt)
+                    if (node.EndType == EndType.OpenButt)
                     {
                         int j = len - 1;
                         pt1 = new IntPoint((long)Round(m_srcPoly[j].X + m_normals[j].X *
@@ -4571,7 +4448,7 @@ namespace Clipper
                         k = len - 2;
                         m_sinA = 0;
                         m_normals[j] = new DoublePoint(-m_normals[j].X, -m_normals[j].Y);
-                        if (node.m_endtype == EndType.OpenSquare)
+                        if (node.EndType == EndType.OpenSquare)
                             DoSquare(j, k);
                         else
                             DoRound(j, k);
@@ -4585,9 +4462,9 @@ namespace Clipper
 
                     k = len - 1;
                     for (int j = k - 1; j > 0; --j)
-                        OffsetPoint(j, ref k, node.m_jointype);
+                        OffsetPoint(j, ref k, node.JoinType);
 
-                    if (node.m_endtype == EndType.OpenButt)
+                    if (node.EndType == EndType.OpenButt)
                     {
                         pt1 = new IntPoint((long)Round(m_srcPoly[0].X - m_normals[0].X * delta),
                           (long)Round(m_srcPoly[0].Y - m_normals[0].Y * delta));
@@ -4600,7 +4477,7 @@ namespace Clipper
                     {
                         k = 1;
                         m_sinA = 0;
-                        if (node.m_endtype == EndType.OpenSquare)
+                        if (node.EndType == EndType.OpenSquare)
                             DoSquare(0, 1);
                         else
                             DoRound(0, 1);
@@ -4642,7 +4519,7 @@ namespace Clipper
         }
         //------------------------------------------------------------------------------
 
-        public void Execute(ref PolyTree solution, double delta)
+        public void Execute(ref PolygonTree solution, double delta)
         {
             solution.Clear();
             FixOrientations();
@@ -4669,15 +4546,15 @@ namespace Clipper
                 clpr.AddPath(outer, PolyType.Subject, true);
                 clpr.ReverseSolution = true;
                 clpr.Execute(ClipOperation.Union, solution, PolyFillType.Negative, PolyFillType.Negative);
-                //remove the outer PolyNode rectangle ...
-                if (solution.ChildCount == 1 && solution.Childs[0].ChildCount > 0)
+                //remove the outer PolygonNode rectangle ...
+                if (solution.Children.Count == 1 && solution.Children[0].Children.Count > 0)
                 {
-                    PolyNode outerNode = solution.Childs[0];
-                    solution.Childs.Capacity = outerNode.ChildCount;
-                    solution.Childs[0] = outerNode.Childs[0];
-                    solution.Childs[0].m_Parent = solution;
-                    for (int i = 1; i < outerNode.ChildCount; i++)
-                        solution.AddChild(outerNode.Childs[i]);
+                    var outerNode = solution.Children[0];
+                    solution.Children.Capacity = outerNode.Children.Count;
+                    solution.Children[0] = outerNode.Children[0];
+                    solution.Children[0].Parent = solution;
+                    for (int i = 1; i < outerNode.Children.Count; i++)
+                        solution.AddChild(outerNode.Children[i]);
                 }
                 else
                     solution.Clear();

@@ -22,7 +22,7 @@ namespace Clipper
                     return clipper.Execute(operation, solution as PolygonPath);
 
                 case SolutonType.Tree:
-                    return clipper.Execute(operation, solution as PolyTree);
+                    return clipper.Execute(operation, solution as PolygonTree);
 
                 default:
                     throw new ArgumentOutOfRangeException(nameof(solution.SolutionType));

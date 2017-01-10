@@ -27,12 +27,12 @@ namespace Clipper
             get { return this.Sum(polygon => polygon.Area); }
         }
 
-        public static PolygonPath FromTree(PolyTree tree, NodeType nodeType = NodeType.Any)
+        public static PolygonPath FromTree(PolygonTree tree, NodeType nodeType = NodeType.Any)
         {
-            return new PolygonPath(tree.Childs.Count) { { tree, nodeType } };
+            return new PolygonPath(tree.Children.Count) { { tree, nodeType } };
         }
 
-        private void Add(PolyNode treeNode, NodeType nodeType)
+        private void Add(PolygonNode treeNode, NodeType nodeType)
         {
             var match = true;
 
@@ -42,12 +42,12 @@ namespace Clipper
                 case NodeType.Closed: match = !treeNode.IsOpen; break;
             }
 
-            if (treeNode.Contour.Count > 0 && match)
+            if (treeNode.Polygon.Count > 0 && match)
             {
-                Add(treeNode.Contour);
+                Add(treeNode.Polygon);
             }
 
-            foreach (var polyNode in treeNode.Childs)
+            foreach (var polyNode in treeNode.Children)
             {
                 Add(polyNode, nodeType);
             }

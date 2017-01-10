@@ -131,7 +131,7 @@ namespace PerformanceTests
                                         pt.X * Scale,
                                         pt.Y * Scale)))));
 
-                    var solution = new Clipper.PolyTree();
+                    var solution = new Clipper.PolygonTree();
                     var clipper = new Clipper.Clipper();
 
                     clipper.AddPaths(subject, Clipper.PolyType.Subject);

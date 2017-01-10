@@ -48,8 +48,10 @@
     <Compile Include="IntPoint.cs" />
     <Compile Include="NodeType.cs" />
     <Compile Include="Polygon.cs" />
+    <Compile Include="PolygonNode.cs" />
     <Compile Include="PolygonOrientation.cs" />
     <Compile Include="PolygonPath.cs" />
+    <Compile Include="PolygonTree.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SolutonType.cs" />
   </ItemGroup>

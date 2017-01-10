@@ -2739,7 +2739,7 @@ namespace UnitTests
                 new DoublePoint(+50.0, +50.0)
             }.Select(p => new IntPoint(p * Scale))));
 
-            var tree = new PolyTree();
+            var tree = new PolygonTree();
             Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = PolygonPath.FromTree(tree);
@@ -2777,7 +2777,7 @@ namespace UnitTests
                 IsClosed = false
             });
 
-            var tree = new PolyTree();
+            var tree = new PolygonTree();
             Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
             var solution = PolygonPath.FromTree(tree);
 
@@ -3459,7 +3459,7 @@ namespace UnitTests
                     subject1, subject2, subject3
                 });
 
-            var tree = new PolyTree();
+            var tree = new PolygonTree();
             Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = PolygonPath.FromTree(tree);
@@ -3514,7 +3514,7 @@ namespace UnitTests
                 new DoublePoint(+09.0, +05.0)
             }.Select(p => new IntPoint(p * Scale))));
 
-            var tree = new PolyTree();
+            var tree = new PolygonTree();
             Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = PolygonPath.FromTree(tree);
