@@ -43,6 +43,42 @@ namespace Clipper
         internal Edge NextInSel;
         internal Edge PrevInSel;
 
-        internal bool IsHorizontal => Delta.Y == 0;
+        internal bool IsHorizontal { get; private set; }
+
+        internal void InitializeEdge(Edge next, Edge prev, IntPoint point)
+        {
+            Next = next;
+            Prev = prev;
+            Current = point;
+            OutIndex = ClippingHelper.Unassigned;
+        }
+
+        internal void InitializeEdge(PolygonKind kind)
+        {
+            if (Current.Y >= Next.Current.Y)
+            {
+                Bottom = Current;
+                Top = Next.Current;
+            }
+            else
+            {
+                Top = Current;
+                Bottom = Next.Current;
+            }
+            SetDx();
+            Kind = kind;
+        }
+
+        internal void SetDx()
+        {
+            Delta.X = Top.X - Bottom.X;
+            Delta.Y = Top.Y - Bottom.Y;
+
+            IsHorizontal = Delta.Y == 0;
+
+            Dx = IsHorizontal
+                ? ClippingHelper.Horizontal
+                : (double)Delta.X / Delta.Y;
+        }
     };
 }

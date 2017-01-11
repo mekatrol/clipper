@@ -27,6 +27,14 @@ namespace Clipper
             get { return this.Sum(polygon => polygon.Area); }
         }
 
+        public void ReversePolygonOrientations()
+        {
+            foreach (var polygon in this)
+            {
+                polygon.Reverse();
+            }
+        }
+
         public static PolygonPath FromTree(PolygonTree tree, NodeType nodeType = NodeType.Any)
         {
             return new PolygonPath(tree.Children.Count) { { tree, nodeType } };

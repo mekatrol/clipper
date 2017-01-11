@@ -73,8 +73,5 @@
     <Compile Include="Scanbeam.cs" />
     <Compile Include="SolutonType.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="README.txt" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

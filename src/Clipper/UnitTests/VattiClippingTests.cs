@@ -2510,6 +2510,88 @@ namespace UnitTests
             Assert.AreEqual(+0400 * Scale, polygon[3].X); Assert.AreEqual(-0400 * Scale, polygon[3].Y);
         }
 
+
+        [TestMethod]
+        public void MiscShapeTest()
+        {
+            var subject = new PolygonPath(
+                new Polygon(new[]
+                {
+                    new DoublePoint(+01.0, +02.0),
+                    new DoublePoint(+03.0, +02.0),
+                    new DoublePoint(+04.0, +01.0),
+                    new DoublePoint(+05.0, +02.0),
+                    new DoublePoint(+07.0, +02.0),
+                    new DoublePoint(+06.0, +03.0),
+                    new DoublePoint(+07.0, +04.0),
+                    new DoublePoint(+05.0, +04.0),
+                    new DoublePoint(+04.0, +05.0),
+                    new DoublePoint(+03.0, +04.0),
+                    new DoublePoint(+01.0, +04.0),
+                    new DoublePoint(+02.0, +03.0)
+                }.Select(p => new IntPoint(p * Scale))));
+
+            var clip = new PolygonPath(
+                new Polygon(new[]
+                {
+                    new DoublePoint(+01.0, +01.0),
+                    new DoublePoint(+03.0, +00.0),
+                    new DoublePoint(+05.0, +00.0),
+                    new DoublePoint(+07.0, +01.0),
+                    new DoublePoint(+08.0, +03.0),
+                    new DoublePoint(+08.0, +05.0),
+                    new DoublePoint(+07.0, +07.0),
+                    new DoublePoint(+05.0, +08.0),
+                    new DoublePoint(+03.0, +08.0),
+                    new DoublePoint(+01.0, +07.0),
+                    new DoublePoint(+00.0, +05.0),
+                    new DoublePoint(+00.0, +03.0)
+                }.Select(p => new IntPoint(p * Scale))));
+
+            var solution = new PolygonPath();
+            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+
+            Assert.AreEqual(1, solution.Count);
+            Assert.AreEqual(12, solution[0].Count);
+            solution[0].OrderBottomLeftFirst();
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+03.0 * Scale, +00.0 * Scale) - solution[0][0]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+05.0 * Scale, +00.0 * Scale) - solution[0][1]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+07.0 * Scale, +01.0 * Scale) - solution[0][2]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+08.0 * Scale, +03.0 * Scale) - solution[0][3]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+08.0 * Scale, +05.0 * Scale) - solution[0][4]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+07.0 * Scale, +07.0 * Scale) - solution[0][5]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+05.0 * Scale, +08.0 * Scale) - solution[0][6]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+03.0 * Scale, +08.0 * Scale) - solution[0][7]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+01.0 * Scale, +07.0 * Scale) - solution[0][8]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+00.0 * Scale, +05.0 * Scale) - solution[0][9]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+00.0 * Scale, +03.0 * Scale) - solution[0][10]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+01.0 * Scale, +01.0 * Scale) - solution[0][11]).Length));
+
+            solution = new PolygonPath();
+
+            // Orientation of polygons should not matter, switch to clockwise.
+            subject.ReversePolygonOrientations();
+            clip.ReversePolygonOrientations();
+
+            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+
+            Assert.AreEqual(1, solution.Count);
+            Assert.AreEqual(12, solution[0].Count);
+            solution[0].OrderBottomLeftFirst();
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+04.0 * Scale, +01.0 * Scale) - solution[0][0]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+05.0 * Scale, +02.0 * Scale) - solution[0][1]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+07.0 * Scale, +02.0 * Scale) - solution[0][2]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+06.0 * Scale, +03.0 * Scale) - solution[0][3]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+07.0 * Scale, +04.0 * Scale) - solution[0][4]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+05.0 * Scale, +04.0 * Scale) - solution[0][5]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+04.0 * Scale, +05.0 * Scale) - solution[0][6]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+03.0 * Scale, +04.0 * Scale) - solution[0][7]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+01.0 * Scale, +04.0 * Scale) - solution[0][8]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+02.0 * Scale, +03.0 * Scale) - solution[0][9]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+01.0 * Scale, +02.0 * Scale) - solution[0][10]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+03.0 * Scale, +02.0 * Scale) - solution[0][11]).Length));
+        }
+
         [TestMethod]
         public void BasicClipTest()
         {
@@ -2531,6 +2613,20 @@ namespace UnitTests
                 }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
+            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+
+            Assert.AreEqual(1, solution.Count);
+            Assert.AreEqual(3, solution[0].Count);
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+10.0 * Scale, +06.5 * Scale) - solution[0][0]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+08.0 * Scale, +05.0 * Scale) - solution[0][1]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+10.0 * Scale, +03.5 * Scale) - solution[0][2]).Length));
+
+            solution = new PolygonPath();
+
+            // Orientation of polygons should not matter, switch to clockwise.
+            subject.ReversePolygonOrientations();
+            clip.ReversePolygonOrientations();
+
             Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
