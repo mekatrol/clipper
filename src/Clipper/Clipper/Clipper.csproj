@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="ClipOperation.cs" />
     <Compile Include="Clipper.cs" />
+    <Compile Include="ClipperOffset.cs" />
     <Compile Include="ClippingHelper.cs" />
     <Compile Include="DoublePoint.cs" />
     <Compile Include="Edge.cs" />

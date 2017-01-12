@@ -59,7 +59,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ClipperLegacy\ClipperOriginal.csproj">
+    <ProjectReference Include="..\ClipperOriginal\ClipperOriginal.csproj">
       <Project>{7ec133ff-23cd-4880-bb69-2769df81c333}</Project>
       <Name>ClipperOriginal</Name>
     </ProjectReference>

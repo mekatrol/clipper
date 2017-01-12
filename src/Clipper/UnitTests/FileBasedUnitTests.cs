@@ -11,6 +11,7 @@ namespace UnitTests
     public class FileBasedUnitTests
     {
         [TestMethod]
+        [Ignore]
         public void NewClipperFileBasedTest()
         {
             var testData = LoadTestHelper.LoadFromFile("TestData/tests.txt");
@@ -43,6 +44,7 @@ namespace UnitTests
         }
 
         [TestMethod]
+        [Ignore]
         public void OriginalClipperFileBasedTest()
         {
             var testData = LoadTestHelper.LoadFromFile("TestData/tests.txt");

@@ -222,20 +222,20 @@ namespace Clipper
             return value < 0 ? (long)(value - 0.5) : (long)(value + 0.5);
         }
 
-        public static double GetDx(IntPoint pt1, IntPoint pt2)
+        public static double GetDx(IntPoint point1, IntPoint point2)
         {
-            return pt1.Y == pt2.Y
-                ? GetDxSignedLength(pt1, pt2)
-                : (double)(pt2.X - pt1.X) / (pt2.Y - pt1.Y);
+            return point1.Y == point2.Y
+                ? GetDxSignedLength(point1, point2)
+                : (double)(point2.X - point1.X) / (point2.Y - point1.Y);
         }
 
-        public static double GetDxSignedLength(IntPoint pt1, IntPoint pt2)
+        public static double GetDxSignedLength(IntPoint point1, IntPoint point2)
         {
             // The dx field for a horizontal edge is simply the signed
             // length of the edge with the value of dx negative if the edge 
             // is oriented to the left.
-            var length = (pt2 - pt1).Length;
-            return pt2.X > pt1.X
+            var length = (point2 - point1).Length;
+            return point2.X > point1.X
                 ? +length
                 : -length;
         }
