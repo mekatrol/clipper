@@ -13,7 +13,7 @@ namespace PerformanceTests
          *  NOTE:
          *  
          *  This is not a true performance test. Completion time varies each 
-         *  time the test is executed, sometimes the legacy code is faster and 
+         *  time the test is executed, sometimes the original code is faster and 
          *  other times the refactored code is faster. 
          *  
          *  The intent of this test was to ensure that during refactoring the code 
@@ -40,7 +40,7 @@ namespace PerformanceTests
         ///     1. The square and star are scaled randomly to provide range in the polygon sizes.
         ///     2. The square and star are selected randomly as the subject and clip polygons.
         ///     3. The clip operation for these polygons is randomly chosen.
-        ///     4. The random data is pre-generated so that both the legacy and 
+        ///     4. The random data is pre-generated so that both the orignal and 
         ///        refactored clippers operate on the same data values and operations.
         /// 
         /// </summary>
@@ -49,10 +49,10 @@ namespace PerformanceTests
         {
             var paths = TestPolygons.LoadPaths("SimplePolygons.zip");
 
-            var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
+            var originalClipperExecutionTime = ExecuteOriginalClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
-            var pct = refactoredClipperExecutionTime / (double)legacyClipperExecutionTime;
+            var pct = refactoredClipperExecutionTime / (double)originalClipperExecutionTime;
 
             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
@@ -65,7 +65,7 @@ namespace PerformanceTests
         ///     1. The complex polygons are scaled randomly to provide range in the polygon sizes.
         ///     2. The complex polygons are selected randomly as the subject and clip polygons.
         ///     3. The clip operation for these polygons is randomly chosen.
-        ///     4. The random data is pre-generated so that both the legacy and 
+        ///     4. The random data is pre-generated so that both the orignal and 
         ///        refactored clippers operate on the same data values and operations.
         /// 
         /// </summary>
@@ -74,10 +74,10 @@ namespace PerformanceTests
         {
             var paths = TestPolygons.LoadPaths("ComplexPolygons.zip");
 
-            var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
+            var originalClipperExecutionTime = ExecuteOriginalClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
-            var pct = refactoredClipperExecutionTime / (double)legacyClipperExecutionTime;
+            var pct = refactoredClipperExecutionTime / (double)originalClipperExecutionTime;
              
             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
@@ -89,7 +89,7 @@ namespace PerformanceTests
         ///     1. The polygons are scaled randomly to provide range in the polygon sizes.
         ///     2. The polygons are selected randomly as the subject and clip polygons.
         ///     3. The clip operation for these polygons is randomly chosen.
-        ///     4. The random data is pre-generated so that both the legacy and 
+        ///     4. The random data is pre-generated so that both the original and 
         ///        refactored clippers operate on the same data values and operations.
         /// 
         /// </summary>
@@ -98,10 +98,10 @@ namespace PerformanceTests
         {
             var paths = TestPolygons.LoadPaths("LargePolygons.zip");
 
-            var legacyClipperExecutionTime = ExecuteLegacyClipper(TestIterationCount, paths);
+            var originalClipperExecutionTime = ExecuteOriginalClipper(TestIterationCount, paths);
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
-            var pct = refactoredClipperExecutionTime / (double)legacyClipperExecutionTime;
+            var pct = refactoredClipperExecutionTime / (double)originalClipperExecutionTime;
 
              Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
@@ -148,7 +148,7 @@ namespace PerformanceTests
             return stopwatch.Elapsed.Ticks;
         }
 
-        public static long ExecuteLegacyClipper(int testIterationCount, List<ClipExecutionData> executionData)
+        public static long ExecuteOriginalClipper(int testIterationCount, List<ClipExecutionData> executionData)
         {
             var stopwatch = new Stopwatch();
             stopwatch.Start();

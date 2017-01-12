@@ -93,10 +93,10 @@ namespace Visualizer
                 : null;
 
             var originalClipperSolution = new List<List<IntPoint>>();
-            var legacyClipper = new ClipperLib.Clipper();
-            legacyClipper.AddPaths(test.Subjects.ToOriginal(), PolyType.ptSubject, true);
-            legacyClipper.AddPaths(test.Clips.ToOriginal(), PolyType.ptClip, true);
-            legacyClipper.Execute(ClipType.ctUnion, originalClipperSolution);
+            var originalClipper = new ClipperLib.Clipper();
+            originalClipper.AddPaths(test.Subjects.ToOriginal(), PolyType.ptSubject, true);
+            originalClipper.AddPaths(test.Clips.ToOriginal(), PolyType.ptClip, true);
+            originalClipper.Execute(ClipType.ctUnion, originalClipperSolution);
             _originalClipperSolution = originalClipperSolution.ToNew();
 
             _originalClipperBoundary = _originalClipperSolution.Any()

@@ -77,9 +77,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ClipperLegacy\ClipperLegacy.csproj">
+    <ProjectReference Include="..\ClipperLegacy\ClipperOriginal.csproj">
       <Project>{7ec133ff-23cd-4880-bb69-2769df81c333}</Project>
-      <Name>ClipperLegacy</Name>
+      <Name>ClipperOriginal</Name>
     </ProjectReference>
     <ProjectReference Include="..\Clipper\Clipper.csproj">
       <Project>{9d77fa39-4a49-4560-8b77-b7c901ba8cf4}</Project>

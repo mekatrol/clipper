@@ -37,7 +37,7 @@
 *                                                                              *
 * Angus' version has been modified to align with a typical C# style rules.     *
 * Unit and performance test added at the same time to allow cross checking     *
-* between old (legacy) and new code.                                           *
+* between old (orginal) and new code.                                          *
 *                                                                              *
 *******************************************************************************/
 
