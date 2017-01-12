@@ -33,6 +33,7 @@
             this.viewBoundaryCheckBox = new System.Windows.Forms.CheckBox();
             this.viewFillCheckBox = new System.Windows.Forms.CheckBox();
             this.solutionComboBox = new System.Windows.Forms.ComboBox();
+            this.testListComboBox = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // viewSubjectsCheckBox
@@ -41,7 +42,7 @@
             this.viewSubjectsCheckBox.Checked = true;
             this.viewSubjectsCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.viewSubjectsCheckBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.viewSubjectsCheckBox.Location = new System.Drawing.Point(9, 12);
+            this.viewSubjectsCheckBox.Location = new System.Drawing.Point(139, 10);
             this.viewSubjectsCheckBox.Name = "viewSubjectsCheckBox";
             this.viewSubjectsCheckBox.Size = new System.Drawing.Size(82, 19);
             this.viewSubjectsCheckBox.TabIndex = 0;
@@ -55,7 +56,7 @@
             this.viewClipsCheckBox.Checked = true;
             this.viewClipsCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.viewClipsCheckBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.viewClipsCheckBox.Location = new System.Drawing.Point(107, 12);
+            this.viewClipsCheckBox.Location = new System.Drawing.Point(250, 10);
             this.viewClipsCheckBox.Name = "viewClipsCheckBox";
             this.viewClipsCheckBox.Size = new System.Drawing.Size(61, 19);
             this.viewClipsCheckBox.TabIndex = 1;
@@ -69,7 +70,7 @@
             this.viewBoundaryCheckBox.Checked = true;
             this.viewBoundaryCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.viewBoundaryCheckBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.viewBoundaryCheckBox.Location = new System.Drawing.Point(345, 12);
+            this.viewBoundaryCheckBox.Location = new System.Drawing.Point(514, 10);
             this.viewBoundaryCheckBox.Name = "viewBoundaryCheckBox";
             this.viewBoundaryCheckBox.Size = new System.Drawing.Size(82, 19);
             this.viewBoundaryCheckBox.TabIndex = 2;
@@ -83,7 +84,7 @@
             this.viewFillCheckBox.Checked = true;
             this.viewFillCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
             this.viewFillCheckBox.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
-            this.viewFillCheckBox.Location = new System.Drawing.Point(443, 12);
+            this.viewFillCheckBox.Location = new System.Drawing.Point(625, 10);
             this.viewFillCheckBox.Name = "viewFillCheckBox";
             this.viewFillCheckBox.Size = new System.Drawing.Size(54, 19);
             this.viewFillCheckBox.TabIndex = 3;
@@ -99,17 +100,32 @@
             "Test",
             "New Clipper",
             "Original Clipper"});
-            this.solutionComboBox.Location = new System.Drawing.Point(184, 10);
+            this.solutionComboBox.Location = new System.Drawing.Point(340, 8);
             this.solutionComboBox.Name = "solutionComboBox";
             this.solutionComboBox.Size = new System.Drawing.Size(145, 23);
             this.solutionComboBox.TabIndex = 4;
             this.solutionComboBox.SelectedIndexChanged += new System.EventHandler(this.SolutionComboBox_SelectedIndexChanged);
+            // 
+            // testListComboBox
+            // 
+            this.testListComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.testListComboBox.FormattingEnabled = true;
+            this.testListComboBox.Items.AddRange(new object[] {
+            "Test",
+            "New Clipper",
+            "Original Clipper"});
+            this.testListComboBox.Location = new System.Drawing.Point(3, 8);
+            this.testListComboBox.Name = "testListComboBox";
+            this.testListComboBox.Size = new System.Drawing.Size(107, 23);
+            this.testListComboBox.TabIndex = 5;
+            this.testListComboBox.SelectedIndexChanged += new System.EventHandler(this.TestListComboBox_SelectedIndexChanged);
             // 
             // ViewFilterControl
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Black;
+            this.Controls.Add(this.testListComboBox);
             this.Controls.Add(this.solutionComboBox);
             this.Controls.Add(this.viewFillCheckBox);
             this.Controls.Add(this.viewBoundaryCheckBox);
@@ -131,5 +147,6 @@
         private System.Windows.Forms.CheckBox viewBoundaryCheckBox;
         private System.Windows.Forms.CheckBox viewFillCheckBox;
         private System.Windows.Forms.ComboBox solutionComboBox;
+        private System.Windows.Forms.ComboBox testListComboBox;
     }
 }

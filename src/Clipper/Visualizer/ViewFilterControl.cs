@@ -31,6 +31,8 @@ namespace Visualizer
         private List<Edge> _originalClipperBoundary;
 
         private SolutionType _solutionType = SolutionType.Test;
+        private Dictionary<int, ClipExecutionData> _testData;
+        private int _testNumber = 23;
 
         public ViewFilterControl()
         {
@@ -42,13 +44,32 @@ namespace Visualizer
             base.OnLoad(e);
 
             // Load unit test data.
-            var testData = LoadTestHelper.LoadFromFile("../../../UnitTests/TestData/tests.txt");
+            _testData = LoadTestHelper.LoadFromFile("../../../UnitTests/TestData/tests.txt");
+
+            testListComboBox.Items.Clear();
+
+            testListComboBox
+                .Items
+                    .AddRange(
+                        _testData
+                            .Select(t => t.Value.TestNumber)
+                            .Cast<object>()
+                            .ToArray()); 
+
+            SetTest();
+
+            testListComboBox.Text = _testNumber.ToString();
+        }
+
+        private void SetTest()
+        {
+            if (!_testData.ContainsKey(_testNumber)) return;
 
             // Get test of interest.
-            var test = testData[23];
+            var test = _testData[_testNumber];
 
-            _testSubject = test.Subjects.First();
-            _testClip = test.Clips.First();
+            _testSubject = test.Subjects.FirstOrDefault();
+            _testClip = test.Clips.FirstOrDefault();
             _testSolution = test.Solution;
 
             _newClipperSolution = new PolygonPath();
@@ -59,13 +80,17 @@ namespace Visualizer
             clipper.AddPaths(test.Clips, PolygonKind.Clip);
             clipper.Execute(ClipOperation.Union, _newClipperSolution);
 
-            _testBoundary = BoundaryBuilder
-                .BuildPolygonBoundary(_testSolution.First(), PolygonKind.Subject)
-                .ToList();
+            _testBoundary = _testSolution.Any() 
+                ? BoundaryBuilder
+                    .BuildPolygonBoundary(_testSolution.First(), PolygonKind.Subject)
+                    .ToList()
+                : null;
 
-            _newClipperBoundary = BoundaryBuilder
-                .BuildPolygonBoundary(_newClipperSolution.First(), PolygonKind.Subject)
-                .ToList();
+            _newClipperBoundary = _newClipperSolution.Any()
+                ? BoundaryBuilder
+                    .BuildPolygonBoundary(_newClipperSolution.First(), PolygonKind.Subject)
+                    .ToList()
+                : null;
 
             var originalClipperSolution = new List<List<IntPoint>>();
             var legacyClipper = new ClipperLib.Clipper();
@@ -74,9 +99,11 @@ namespace Visualizer
             legacyClipper.Execute(ClipType.ctUnion, originalClipperSolution);
             _originalClipperSolution = originalClipperSolution.ToNew();
 
-            _originalClipperBoundary = BoundaryBuilder
-                .BuildPolygonBoundary(_originalClipperSolution.First(), PolygonKind.Subject)
-                .ToList();
+            _originalClipperBoundary = _originalClipperSolution.Any()
+                ? BoundaryBuilder
+                    .BuildPolygonBoundary(_originalClipperSolution.First(), PolygonKind.Subject)
+                    .ToList()
+                : null;
 
             Program.VisualizerForm.ClipperViewControl.Subjects = new[]
             {
@@ -85,7 +112,7 @@ namespace Visualizer
                     IsOpen = false,
                     EdgeColor = Color.LawnGreen,
                     VertexColor = Color.DarkGreen,
-                    Items = _testSubject.ToVertices()
+                    Items = _testSubject?.ToVertices()
                 }
             };
 
@@ -96,7 +123,7 @@ namespace Visualizer
                     IsOpen = false,
                     EdgeColor = Color.Blue,
                     VertexColor = Color.DarkBlue,
-                    Items = _testClip.ToVertices()
+                    Items = _testClip?.ToVertices()
                 }
             };
 
@@ -124,7 +151,7 @@ namespace Visualizer
 
                     fillEdgeColor = Color.FromArgb(60, Color.White);
                     fillVertexColor = Color.White;
-                    fillItems = viewFillCheckBox.Checked ? _testSolution.First().ToVertices() : null;
+                    fillItems = viewFillCheckBox.Checked ? _testSolution.FirstOrDefault()?.ToVertices() : null;
                     break;
 
                 case SolutionType.NewClipper:
@@ -134,7 +161,7 @@ namespace Visualizer
 
                     fillEdgeColor = Color.FromArgb(60, Color.SkyBlue);
                     fillVertexColor = Color.SkyBlue;
-                    fillItems = viewFillCheckBox.Checked ? _newClipperSolution.First().ToVertices() : null;
+                    fillItems = viewFillCheckBox.Checked ? _newClipperSolution.FirstOrDefault()?.ToVertices() : null;
                     break;
 
                 case SolutionType.OriginalClipper:
@@ -144,7 +171,7 @@ namespace Visualizer
 
                     fillEdgeColor = Color.FromArgb(60, Color.LightGreen);
                     fillVertexColor = Color.LightGreen;
-                    fillItems = viewFillCheckBox.Checked ? _originalClipperSolution.First().ToVertices() : null;
+                    fillItems = viewFillCheckBox.Checked ? _originalClipperSolution.FirstOrDefault()?.ToVertices() : null;
                     break;
 
                 default:
@@ -200,6 +227,12 @@ namespace Visualizer
             // Just cast from index.
             _solutionType = (SolutionType) solutionComboBox.SelectedIndex;
             SetSolution();
+        }
+
+        private void TestListComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _testNumber = int.Parse(testListComboBox.Text);
+            SetTest();
         }
     }
 }
