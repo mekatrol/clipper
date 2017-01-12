@@ -220,7 +220,7 @@ namespace Visualizer
 
         private void DrawVertices(Graphics graphics, PolygonViewModel viewModel)
         {
-            if (viewModel.Items.Count == 0) return;
+            if (viewModel?.Items == null || viewModel.Items.Count == 0) return;
 
             var points = TranslateAndScale(viewModel.Items);
 
@@ -263,7 +263,7 @@ namespace Visualizer
 
         private void DrawEdges(Graphics graphics, BoundaryViewModel viewModel)
         {
-            if (viewModel.Items.Count == 0) return;
+            if (viewModel?.Items == null || viewModel.Items.Count == 0) return;
 
             var edges = TranslateAndScale(viewModel.Items);
 
@@ -332,7 +332,7 @@ namespace Visualizer
 
         private void DrawFill(Graphics graphics, PolygonViewModel viewModel)
         {
-            if (viewModel.Items.Count == 0) return;
+            if (viewModel?.Items == null || viewModel.Items.Count == 0) return;
 
             var points = TranslateAndScale(viewModel.Items);
 
@@ -361,7 +361,7 @@ namespace Visualizer
             {
                 foreach (var subject in _subjects)
                 {
-                    allVertices.AddRange(subject.Items);
+                    if (subject.Items != null) { allVertices.AddRange(subject.Items); }
                 }
             }
 
@@ -369,7 +369,7 @@ namespace Visualizer
             {
                 foreach (var clip in _clips)
                 {
-                    allVertices.AddRange(clip.Items);
+                    if (clip.Items != null) { allVertices.AddRange(clip.Items); }
                 }
             }
 
@@ -377,6 +377,8 @@ namespace Visualizer
             {
                 foreach (var boundary in _boundaries)
                 {
+                    if (boundary.Items == null) continue;
+
                     foreach (var edge in boundary.Items)
                     {
                         allVertices.Add(new Point(edge.Bottom));
@@ -389,7 +391,7 @@ namespace Visualizer
             {
                 foreach (var fill in _fill)
                 {
-                    allVertices.AddRange(fill.Items);
+                    if (fill.Items != null) { allVertices.AddRange(fill.Items); }
                 }
             }
 
