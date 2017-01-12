@@ -49,15 +49,8 @@ namespace UnitTests
             var testData = LoadTestHelper.LoadFromFile("TestData/tests.txt");
             var test = testData[36];
 
-            var subjects = test
-                .Subjects
-                    .Select(subject => subject.Select(s => new ClipperLib.IntPoint(s.X, s.Y)).ToList())
-                    .ToList();
-
-            var clips = test
-                .Clips
-                    .Select(subject => subject.Select(s => new ClipperLib.IntPoint(s.X, s.Y)).ToList())
-                    .ToList();
+            var subjects = test.Subjects.ToOriginal();
+            var clips = test.Clips.ToOriginal();
 
             var clipper1 = new ClipperLib.Clipper();
             clipper1.AddPaths(subjects, PolyType.ptSubject, true);

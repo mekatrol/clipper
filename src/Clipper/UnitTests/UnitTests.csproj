@@ -50,6 +50,7 @@
   <ItemGroup>
     <Compile Include="ClipExecutionData.cs" />
     <Compile Include="FileBasedUnitTests.cs" />
+    <Compile Include="OriginalHelper.cs" />
     <Compile Include="LoadTestHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="VattiClippingTests.cs" />
