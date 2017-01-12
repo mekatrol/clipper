@@ -7,7 +7,7 @@ namespace Clipper
         /// <summary>
         /// The polygon points for this node in the tree.
         /// </summary>
-        internal Polygon Polygon { get; private set; } = new Polygon();
+        public Polygon Polygon { get; private set; } = new Polygon();
 
         /// <summary>
         /// The node parent within the tree, or null if is the root node.

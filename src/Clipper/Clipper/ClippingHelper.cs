@@ -4,10 +4,10 @@ namespace Clipper
 {
     public static class ClippingHelper
     {
-        internal const double Horizontal = -3.4E+38;
-        internal const int Skip = -2;
-        internal const int Unassigned = -1;
-        internal const double Tolerance = 1.0E-20;
+        public const double Horizontal = -3.4E+38;
+        public const int Skip = -2;
+        public const int Unassigned = -1;
+        public const double Tolerance = 1.0E-20;
 
         public static bool Execute<T>(
             ClipOperation operation,

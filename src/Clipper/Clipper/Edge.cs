@@ -1,6 +1,6 @@
 namespace Clipper
 {
-    internal class Edge
+    public class Edge
     {
         /// <summary>
         /// The edge most bottom point.

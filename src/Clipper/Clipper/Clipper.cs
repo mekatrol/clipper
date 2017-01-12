@@ -2416,17 +2416,13 @@ namespace Clipper
         }
         //------------------------------------------------------------------------------
 
-        internal static long Round(double value)
-        {
-            return value < 0 ? (long)(value - 0.5) : (long)(value + 0.5);
-        }
         //------------------------------------------------------------------------------
 
         private static long TopX(Edge edge, long currentY)
         {
             if (currentY == edge.Top.Y)
                 return edge.Top.X;
-            return edge.Bottom.X + Round(edge.Dx * (currentY - edge.Bottom.Y));
+            return edge.Bottom.X + (edge.Dx * (currentY - edge.Bottom.Y)).RoundToLong();
         }
         //------------------------------------------------------------------------------
 
@@ -2453,7 +2449,7 @@ namespace Clipper
                 else
                 {
                     b2 = edge2.Bottom.Y - (edge2.Bottom.X / edge2.Dx);
-                    ip.Y = Round(ip.X / edge2.Dx + b2);
+                    ip.Y = GeometryHelper.RoundToLong(ip.X / edge2.Dx + b2);
                 }
             }
             else if (edge2.Delta.X == 0)
@@ -2466,7 +2462,7 @@ namespace Clipper
                 else
                 {
                     b1 = edge1.Bottom.Y - (edge1.Bottom.X / edge1.Dx);
-                    ip.Y = Round(ip.X / edge1.Dx + b1);
+                    ip.Y = GeometryHelper.RoundToLong(ip.X / edge1.Dx + b1);
                 }
             }
             else
@@ -2474,11 +2470,11 @@ namespace Clipper
                 b1 = edge1.Bottom.X - edge1.Bottom.Y * edge1.Dx;
                 b2 = edge2.Bottom.X - edge2.Bottom.Y * edge2.Dx;
                 double q = (b2 - b1) / (edge1.Dx - edge2.Dx);
-                ip.Y = Round(q);
+                ip.Y = GeometryHelper.RoundToLong(q);
                 if (Math.Abs(edge1.Dx) < Math.Abs(edge2.Dx))
-                    ip.X = Round(edge1.Dx * q + b1);
+                    ip.X = GeometryHelper.RoundToLong(edge1.Dx * q + b1);
                 else
-                    ip.X = Round(edge2.Dx * q + b2);
+                    ip.X = GeometryHelper.RoundToLong(edge2.Dx * q + b2);
             }
 
             if (ip.Y < edge1.Top.Y || ip.Y < edge2.Top.Y)
@@ -3761,7 +3757,6 @@ namespace Clipper
             return result;
         }
         //------------------------------------------------------------------------------
-
     } //end Clipper
 
     public class ClipperOffset

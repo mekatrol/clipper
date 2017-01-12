@@ -1,4 +1,4 @@
 namespace Clipper
 {
-    internal enum EdgeDirection { RightToLeft, LeftToRight };
+    public enum EdgeDirection { RightToLeft, LeftToRight };
 }
