@@ -443,82 +443,106 @@ namespace Clipper
                 edge = ProcessBound(localMinima.LeftBound, leftBoundIsForward);
                 if (edge.OutIndex == ClippingHelper.Skip) edge = ProcessBound(edge, leftBoundIsForward);
 
-                Edge E2 = ProcessBound(localMinima.RightBound, !leftBoundIsForward);
-                if (E2.OutIndex == ClippingHelper.Skip) E2 = ProcessBound(E2, !leftBoundIsForward);
+                var e2 = ProcessBound(localMinima.RightBound, !leftBoundIsForward);
+                if (e2.OutIndex == ClippingHelper.Skip) e2 = ProcessBound(e2, !leftBoundIsForward);
 
                 if (localMinima.LeftBound.OutIndex == ClippingHelper.Skip)
                     localMinima.LeftBound = null;
                 else if (localMinima.RightBound.OutIndex == ClippingHelper.Skip)
                     localMinima.RightBound = null;
                 InsertLocalMinima(localMinima);
-                if (!leftBoundIsForward) edge = E2;
+                if (!leftBoundIsForward) edge = e2;
             }
             return true;
 
         }
 
-        public bool AddPaths(PolygonPath ppg, PolygonKind polygonKind)
+        public bool AddPaths(PolygonPath path, PolygonKind polygonKind)
         {
-            bool result = false;
-            for (int i = 0; i < ppg.Count; ++i)
-                if (AddPath(ppg[i], polygonKind, ppg[i].IsClosed)) result = true;
+            var result = false;
+            foreach (var polygon in path)
+            {
+                if (AddPath(polygon, polygonKind, polygon.IsClosed))
+                {
+                    result = true;
+                }
+            }
             return result;
         }
 
-        internal bool Pt2IsBetweenPt1AndPt3(IntPoint pt1, IntPoint pt2, IntPoint pt3)
+        internal bool Pt2IsBetweenPt1AndPt3(IntPoint point1, IntPoint point2, IntPoint point3)
         {
-            if ((pt1 == pt3) || (pt1 == pt2) || (pt3 == pt2)) return false;
-            else if (pt1.X != pt3.X) return (pt2.X > pt1.X) == (pt2.X < pt3.X);
-            else return (pt2.Y > pt1.Y) == (pt2.Y < pt3.Y);
+            if (point1 == point3 || point1 == point2 || point3 == point2)
+            {
+                return false;
+            }
+
+            if (point1.X != point3.X)
+            {
+                return point2.X > point1.X == point2.X < point3.X;
+            }
+
+            return point2.Y > point1.Y == point2.Y < point3.Y;
         }
 
-        private static Edge RemoveEdge(Edge e)
+        private static Edge RemoveEdge(Edge edge)
         {
-            //removes edge from double_linked_list (but without removing from memory)
-            e.Prev.Next = e.Next;
-            e.Next.Prev = e.Prev;
-            Edge result = e.Next;
-            e.Prev = null; //flag as removed (see ClipperBase.Clear)
-            return result;
+            edge.Prev.Next = edge.Next;
+            edge.Next.Prev = edge.Prev;
+
+            var next = edge.Next;
+
+            edge.Prev = null;
+
+            return next;
         }
 
-        private void InsertLocalMinima(LocalMinima newLm)
+        private void InsertLocalMinima(LocalMinima localMinima)
         {
             if (_minimaList == null)
             {
-                _minimaList = newLm;
+                _minimaList = localMinima;
             }
-            else if (newLm.Y >= _minimaList.Y)
+            else if (localMinima.Y >= _minimaList.Y)
             {
-                newLm.Next = _minimaList;
-                _minimaList = newLm;
+                localMinima.Next = _minimaList;
+                _minimaList = localMinima;
             }
             else
             {
-                LocalMinima tmpLm = _minimaList;
-                while (tmpLm.Next != null && (newLm.Y < tmpLm.Next.Y))
-                    tmpLm = tmpLm.Next;
-                newLm.Next = tmpLm.Next;
-                tmpLm.Next = newLm;
+                var insertAfter = _minimaList;
+                while (insertAfter.Next != null && localMinima.Y < insertAfter.Next.Y)
+                {
+                    insertAfter = insertAfter.Next;
+                }
+
+                localMinima.Next = insertAfter.Next;
+                insertAfter.Next = localMinima;
             }
         }
 
-        internal bool PopLocalMinima(long Y, out LocalMinima current)
+        internal LocalMinima PopLocalMinima(long y)
         {
-            current = _currentLocalMinima;
-            if (_currentLocalMinima != null && _currentLocalMinima.Y == Y)
+            var localMinima = _currentLocalMinima;
+
+            // Any local minima matching Y value?
+            if (_currentLocalMinima == null || _currentLocalMinima.Y != y)
             {
-                _currentLocalMinima = _currentLocalMinima.Next;
-                return true;
+                // None available
+                return null;
             }
-            return false;
+
+            // Move to next (pop current out of list).
+            _currentLocalMinima = _currentLocalMinima.Next;
+
+            return localMinima;
         }
 
-        private static void ReverseHorizontal(Edge e)
+        internal static void ReverseHorizontal(Edge e)
         {
-            //swap horizontal edges' top and bottom x's so they follow the natural
-            //progression of the bounds - ie so their xbots will align with the
-            //adjoining lower edge. [Helpful in the ProcessHorizontal() method.]
+            // swap horizontal edges' top and bottom x's so they follow the natural
+            // progression of the bounds - ie so their xbots will align with the
+            // adjoining lower edge. [Helpful in the ProcessHorizontal() method.]
             GeometryHelper.Swap(ref e.Top.X, ref e.Bottom.X);
         }
 
@@ -527,122 +551,153 @@ namespace Clipper
             _currentLocalMinima = _minimaList;
             if (_currentLocalMinima == null) return; //ie nothing to process
 
-            //reset all edges ...
+            // Reset all edges.
             _scanbeam = null;
-            LocalMinima lm = _minimaList;
-            while (lm != null)
+            var localMinima = _minimaList;
+            while (localMinima != null)
             {
-                InsertScanbeam(lm.Y);
-                Edge e = lm.LeftBound;
-                if (e != null)
+                InsertScanbeam(localMinima.Y);
+
+                var edge = localMinima.LeftBound;
+                if (edge != null)
                 {
-                    e.Current = e.Bottom;
-                    e.OutIndex = ClippingHelper.Unassigned;
+                    edge.Current = edge.Bottom;
+                    edge.OutIndex = ClippingHelper.Unassigned;
                 }
-                e = lm.RightBound;
-                if (e != null)
+
+                edge = localMinima.RightBound;
+
+                if (edge != null)
                 {
-                    e.Current = e.Bottom;
-                    e.OutIndex = ClippingHelper.Unassigned;
+                    edge.Current = edge.Bottom;
+                    edge.OutIndex = ClippingHelper.Unassigned;
                 }
-                lm = lm.Next;
+
+                localMinima = localMinima.Next;
             }
             _activeEdges = null;
         }
 
         public static IntRect GetBounds(PolygonPath paths)
         {
-            int i = 0, cnt = paths.Count;
-            while (i < cnt && paths[i].Count == 0) i++;
-            if (i == cnt) return new IntRect(0, 0, 0, 0);
-            var result = new IntRect { Left = paths[i][0].X };
+            var i = 0;
+            var count = paths.Count;
+
+            while (i < count && paths[i].Count == 0)
+            {
+                i++;
+            }
+
+            if (i == count)
+            {
+                return new IntRect(0, 0, 0, 0);
+            }
+
+            var result = new IntRect
+            {
+                Left = paths[i][0].X,
+                Top = paths[i][0].Y
+            };
             result.Right = result.Left;
-            result.Top = paths[i][0].Y;
             result.Bottom = result.Top;
-            for (; i < cnt; i++)
+
+            for (; i < count; i++)
+            {
                 for (var j = 0; j < paths[i].Count; j++)
                 {
-                    if (paths[i][j].X < result.Left) result.Left = paths[i][j].X;
-                    else if (paths[i][j].X > result.Right) result.Right = paths[i][j].X;
-                    if (paths[i][j].Y < result.Top) result.Top = paths[i][j].Y;
-                    else if (paths[i][j].Y > result.Bottom) result.Bottom = paths[i][j].Y;
+                    if (paths[i][j].X < result.Left)
+                    {
+                        result.Left = paths[i][j].X;
+                    }
+                    else if (paths[i][j].X > result.Right)
+                    {
+                        result.Right = paths[i][j].X;
+                    }
+
+                    if (paths[i][j].Y < result.Top)
+                    {
+                        result.Top = paths[i][j].Y;
+                    }
+                    else if (paths[i][j].Y > result.Bottom)
+                    {
+                        result.Bottom = paths[i][j].Y;
+                    }
                 }
+            }
+
             return result;
         }
 
-        internal void InsertScanbeam(long Y)
+        internal void InsertScanbeam(long y)
         {
-            //single-linked list: sorted descending, ignoring dups.
+            // single-linked list: sorted descending, ignoring dups.
             if (_scanbeam == null)
             {
                 _scanbeam = new Scanbeam
                 {
-                    Y = Y
+                    Y = y
                 };
             }
-            else if (Y > _scanbeam.Y)
+            else if (y > _scanbeam.Y)
             {
-                var newSb = new Scanbeam
+                var scanbeam = new Scanbeam
                 {
-                    Y = Y,
+                    Y = y,
                     Next = _scanbeam
                 };
-                _scanbeam = newSb;
+
+                _scanbeam = scanbeam;
             }
             else
             {
-                var sb2 = _scanbeam;
-                while (sb2.Next != null && (Y <= sb2.Next.Y)) sb2 = sb2.Next;
-                if (Y == sb2.Y) return; //ie ignores duplicates
-                var newSb = new Scanbeam
+                var scanbeam = _scanbeam;
+                while (scanbeam.Next != null && y <= scanbeam.Next.Y)
                 {
-                    Y = Y,
-                    Next = sb2.Next
+                    scanbeam = scanbeam.Next;
+                }
+                if (y == scanbeam.Y)
+                {
+                    // Ignore duplicates
+                    return;
+                }
+
+                // Append the scanebeam
+                scanbeam.Next = new Scanbeam
+                {
+                    Y = y,
+                    Next = scanbeam.Next
                 };
-                sb2.Next = newSb;
             }
         }
 
-        internal bool PopScanbeam(out long Y)
+        internal bool PopScanbeam(out long y)
         {
             if (_scanbeam == null)
             {
-                Y = 0;
+                y = 0;
                 return false;
             }
-            Y = _scanbeam.Y;
+
+            y = _scanbeam.Y;
             _scanbeam = _scanbeam.Next;
+
             return true;
         }
 
         internal bool LocalMinimaPending()
         {
-            return (_currentLocalMinima != null);
+            return _currentLocalMinima != null;
         }
 
-        internal OutputPolygon CreateOutRec()
+        internal OutputPolygon CreateOutPolygon()
         {
-            var result = new OutputPolygon
+            var outputPolygon = new OutputPolygon
             {
-                Index = ClippingHelper.Unassigned,
-                IsHole = false,
-                IsOpen = false,
-                FirstLeft = null,
-                Points = null,
-                BottomPoint = null,
-                PolygonNode = null
+                Index = _outputPolygons.Count
             };
-            _outputPolygons.Add(result);
-            result.Index = _outputPolygons.Count - 1;
-            return result;
-        }
 
-        internal void DisposeOutRec(int index)
-        {
-            OutputPolygon outputPolygon = _outputPolygons[index];
-            outputPolygon.Points = null;
-            outputPolygon = null;
-            _outputPolygons[index] = null;
+            _outputPolygons.Add(outputPolygon);
+            return outputPolygon;
         }
 
         internal void UpdateEdgeIntoAel(ref Edge edge)
@@ -652,23 +707,37 @@ namespace Clipper
                 throw new Exception("UpdateEdgeIntoAEL: invalid call");
             }
 
-            Edge AelPrev = edge.PrevInAel;
-            Edge AelNext = edge.NextInAel;
+            var aelPrev = edge.PrevInAel;
+            var aelNext = edge.NextInAel;
             edge.NextInLml.OutIndex = edge.OutIndex;
-            if (AelPrev != null)
-                AelPrev.NextInAel = edge.NextInLml;
-            else _activeEdges = edge.NextInLml;
-            if (AelNext != null)
-                AelNext.PrevInAel = edge.NextInLml;
+
+            if (aelPrev != null)
+            {
+                aelPrev.NextInAel = edge.NextInLml;
+            }
+            else
+            {
+                _activeEdges = edge.NextInLml;
+            }
+
+            if (aelNext != null)
+            {
+                aelNext.PrevInAel = edge.NextInLml;
+            }
+
             edge.NextInLml.Side = edge.Side;
             edge.NextInLml.WindDelta = edge.WindDelta;
             edge.NextInLml.WindCount = edge.WindCount;
             edge.NextInLml.WindCount2 = edge.WindCount2;
             edge = edge.NextInLml;
             edge.Current = edge.Bottom;
-            edge.PrevInAel = AelPrev;
-            edge.NextInAel = AelNext;
-            if (!edge.IsHorizontal) InsertScanbeam(edge.Top.Y);
+            edge.PrevInAel = aelPrev;
+            edge.NextInAel = aelNext;
+
+            if (!edge.IsHorizontal)
+            {
+                InsertScanbeam(edge.Top.Y);
+            }
         }
 
         internal void SwapPositionsInAel(Edge edge1, Edge edge2)
@@ -679,12 +748,19 @@ namespace Clipper
 
             if (edge1.NextInAel == edge2)
             {
-                Edge next = edge2.NextInAel;
+                var next = edge2.NextInAel;
+
                 if (next != null)
+                {
                     next.PrevInAel = edge1;
-                Edge prev = edge1.PrevInAel;
+                }
+
+                var prev = edge1.PrevInAel;
                 if (prev != null)
+                {
                     prev.NextInAel = edge2;
+                }
+
                 edge2.PrevInAel = prev;
                 edge2.NextInAel = edge1;
                 edge1.PrevInAel = edge2;
@@ -692,12 +768,17 @@ namespace Clipper
             }
             else if (edge2.NextInAel == edge1)
             {
-                Edge next = edge1.NextInAel;
+                var next = edge1.NextInAel;
                 if (next != null)
+                {
                     next.PrevInAel = edge2;
-                Edge prev = edge2.PrevInAel;
+                }
+
+                var prev = edge2.PrevInAel;
                 if (prev != null)
+                {
                     prev.NextInAel = edge1;
+                }
                 edge1.PrevInAel = prev;
                 edge1.NextInAel = edge2;
                 edge2.PrevInAel = edge1;
@@ -705,20 +786,34 @@ namespace Clipper
             }
             else
             {
-                Edge next = edge1.NextInAel;
-                Edge prev = edge1.PrevInAel;
+                var next = edge1.NextInAel;
+                var prev = edge1.PrevInAel;
                 edge1.NextInAel = edge2.NextInAel;
+
                 if (edge1.NextInAel != null)
+                {
                     edge1.NextInAel.PrevInAel = edge1;
+                }
+
                 edge1.PrevInAel = edge2.PrevInAel;
                 if (edge1.PrevInAel != null)
+                {
                     edge1.PrevInAel.NextInAel = edge1;
+                }
+
                 edge2.NextInAel = next;
+
                 if (edge2.NextInAel != null)
+                {
                     edge2.NextInAel.PrevInAel = edge2;
+                }
+
                 edge2.PrevInAel = prev;
+
                 if (edge2.PrevInAel != null)
+                {
                     edge2.PrevInAel.NextInAel = edge2;
+                }
             }
 
             if (edge1.PrevInAel == null)
@@ -731,12 +826,12 @@ namespace Clipper
             }
         }
 
-        internal void DeleteFromAel(Edge e)
+        internal void DeleteFromAel(Edge edge)
         {
-            var aelPrev = e.PrevInAel;
-            var aelNext = e.NextInAel;
+            var aelPrev = edge.PrevInAel;
+            var aelNext = edge.NextInAel;
 
-            if (aelPrev == null && aelNext == null && e != _activeEdges)
+            if (aelPrev == null && aelNext == null && edge != _activeEdges)
             {
                 // Not in AEL
                 return;
@@ -752,9 +847,12 @@ namespace Clipper
             }
 
             if (aelNext != null)
+            {
                 aelNext.PrevInAel = aelPrev;
-            e.NextInAel = null;
-            e.PrevInAel = null;
+            }
+
+            edge.NextInAel = null;
+            edge.PrevInAel = null;
         }
 
         private void InsertMaxima(long x)
@@ -828,11 +926,14 @@ namespace Clipper
             {
                 succeeded = ExecuteInternal();
                 //build the return polygons ...
-                if (succeeded) BuildResult(solution);
+                if (succeeded)
+                {
+                    BuildResult(solution);
+                }
             }
             finally
             {
-                DisposeAllPolyPts();
+                _outputPolygons.Clear();
                 _executeLocked = false;
             }
             return succeeded;
@@ -856,7 +957,7 @@ namespace Clipper
             }
             finally
             {
-                DisposeAllPolyPts();
+                _outputPolygons.Clear();
                 _executeLocked = false;
             }
             return succeeded;
@@ -870,10 +971,13 @@ namespace Clipper
                   (outputPolygon.IsHole != outputPolygon.FirstLeft.IsHole &&
                   outputPolygon.FirstLeft.Points != null)) return;
 
-            OutputPolygon orfl = outputPolygon.FirstLeft;
-            while (orfl != null && ((orfl.IsHole == outputPolygon.IsHole) || orfl.Points == null))
-                orfl = orfl.FirstLeft;
-            outputPolygon.FirstLeft = orfl;
+            var firstLeft = outputPolygon.FirstLeft;
+            while (firstLeft != null && (firstLeft.IsHole == outputPolygon.IsHole || firstLeft.Points == null))
+            {
+                firstLeft = firstLeft.FirstLeft;
+            }
+
+            outputPolygon.FirstLeft = firstLeft;
         }
 
         private bool ExecuteInternal()
@@ -883,11 +987,13 @@ namespace Clipper
             _sortedEdges = null;
             _maxima = null;
 
-            if (!PopScanbeam(out long botY)) return false;
+            long botY;
+            if (!PopScanbeam(out botY)) return false;
 
             InsertLocalMinimaIntoAel(botY);
 
-            while (PopScanbeam(out long topY) || LocalMinimaPending())
+            long topY;
+            while (PopScanbeam(out topY) || LocalMinimaPending())
             {
                 ProcessHorizontals();
                 _ghostJoins.Clear();
@@ -939,12 +1045,6 @@ namespace Clipper
             return true;
         }
 
-        private void DisposeAllPolyPts()
-        {
-            for (int i = 0; i < _outputPolygons.Count; ++i) DisposeOutRec(i);
-            _outputPolygons.Clear();
-        }
-
         private void AddJoin(OutputPoint point1, OutputPoint point2, IntPoint offset)
         {
             var j = new Join
@@ -968,25 +1068,33 @@ namespace Clipper
 
         private void InsertLocalMinimaIntoAel(long botY)
         {
-            while (PopLocalMinima(botY, out var lm))
+            LocalMinima localMinima;
+            while ((localMinima = PopLocalMinima(botY)) != null)
             {
-                var leftBound = lm.LeftBound;
-                var rightBound = lm.RightBound;
+                var leftBound = localMinima.LeftBound;
+                var rightBound = localMinima.RightBound;
 
-                OutputPoint op1 = null;
+                OutputPoint outputPoint1 = null;
                 if (leftBound == null)
                 {
                     InsertEdgeIntoAel(rightBound, null);
                     SetWindingCount(rightBound);
+
                     if (IsContributing(rightBound))
-                        op1 = AddOutPt(rightBound, rightBound.Bottom);
+                    {
+                        outputPoint1 = AddOutPt(rightBound, rightBound.Bottom);
+                    }
                 }
                 else if (rightBound == null)
                 {
                     InsertEdgeIntoAel(leftBound, null);
                     SetWindingCount(leftBound);
+
                     if (IsContributing(leftBound))
-                        op1 = AddOutPt(leftBound, leftBound.Bottom);
+                    {
+                        outputPoint1 = AddOutPt(leftBound, leftBound.Bottom);
+                    }
+
                     InsertScanbeam(leftBound.Top.Y);
                 }
                 else
@@ -996,8 +1104,12 @@ namespace Clipper
                     SetWindingCount(leftBound);
                     rightBound.WindCount = leftBound.WindCount;
                     rightBound.WindCount2 = leftBound.WindCount2;
+
                     if (IsContributing(leftBound))
-                        op1 = AddLocalMinPoly(leftBound, rightBound, leftBound.Bottom);
+                    {
+                        outputPoint1 = AddLocalMinPoly(leftBound, rightBound, leftBound.Bottom);
+                    }
+
                     InsertScanbeam(leftBound.Top.Y);
                 }
 
@@ -1006,26 +1118,29 @@ namespace Clipper
                     if (rightBound.IsHorizontal)
                     {
                         if (rightBound.NextInLml != null)
+                        {
                             InsertScanbeam(rightBound.NextInLml.Top.Y);
+                        }
                         AddEdgeToSel(rightBound);
                     }
                     else
+                    {
                         InsertScanbeam(rightBound.Top.Y);
+                    }
                 }
 
                 if (leftBound == null || rightBound == null) continue;
 
                 //if output polygons share an Edge with a horizontal rb, they'll need joining later ...
-                if (op1 != null && rightBound.IsHorizontal &&
+                if (outputPoint1 != null && rightBound.IsHorizontal &&
                   _ghostJoins.Count > 0 && rightBound.WindDelta != 0)
                 {
-                    for (int i = 0; i < _ghostJoins.Count; i++)
+                    foreach (var j in _ghostJoins)
                     {
-                        //if the horizontal Rb and a 'ghost' horizontal overlap, then convert
-                        //the 'ghost' join to a real join ready for later ...
-                        Join j = _ghostJoins[i];
                         if (HorzSegmentsOverlap(j.OutPoint1.Point.X, j.Offset.X, rightBound.Bottom.X, rightBound.Top.X))
-                            AddJoin(j.OutPoint1, op1, j.Offset);
+                        {
+                            AddJoin(j.OutPoint1, outputPoint1, j.Offset);
+                        }
                     }
                 }
 
@@ -1034,29 +1149,32 @@ namespace Clipper
                   leftBound.PrevInAel.OutIndex >= 0 && GeometryHelper.SlopesEqual(leftBound.PrevInAel.Current, leftBound.PrevInAel.Top, leftBound.Current, leftBound.Top, _useFullRange) &&
                   leftBound.WindDelta != 0 && leftBound.PrevInAel.WindDelta != 0)
                 {
-                    OutputPoint Op2 = AddOutPt(leftBound.PrevInAel, leftBound.Bottom);
-                    AddJoin(op1, Op2, leftBound.Top);
+                    var outputPoint = AddOutPt(leftBound.PrevInAel, leftBound.Bottom);
+                    AddJoin(outputPoint1, outputPoint, leftBound.Top);
                 }
 
-                if (leftBound.NextInAel != rightBound)
+                if (leftBound.NextInAel == rightBound)
                 {
+                    continue;
+                }
 
-                    if (rightBound.OutIndex >= 0 && rightBound.PrevInAel.OutIndex >= 0 && GeometryHelper.SlopesEqual(rightBound.PrevInAel.Current, rightBound.PrevInAel.Top, rightBound.Current, rightBound.Top, _useFullRange) &&
-                      rightBound.WindDelta != 0 && rightBound.PrevInAel.WindDelta != 0)
-                    {
-                        OutputPoint Op2 = AddOutPt(rightBound.PrevInAel, rightBound.Bottom);
-                        AddJoin(op1, Op2, rightBound.Top);
-                    }
+                if (rightBound.OutIndex >= 0 && rightBound.PrevInAel.OutIndex >= 0 && GeometryHelper.SlopesEqual(rightBound.PrevInAel.Current, rightBound.PrevInAel.Top, rightBound.Current, rightBound.Top, _useFullRange) &&
+                    rightBound.WindDelta != 0 && rightBound.PrevInAel.WindDelta != 0)
+                {
+                    var outputPoint = AddOutPt(rightBound.PrevInAel, rightBound.Bottom);
+                    AddJoin(outputPoint1, outputPoint, rightBound.Top);
+                }
 
-                    Edge e = leftBound.NextInAel;
-                    if (e != null)
-                        while (e != rightBound)
-                        {
-                            //nb: For calculating winding counts etc, IntersectEdges() assumes
-                            //that param1 will be to the right of param2 ABOVE the intersection ...
-                            IntersectEdges(rightBound, e, leftBound.Current); //order important here
-                            e = e.NextInAel;
-                        }
+                var edge = leftBound.NextInAel;
+
+                if (edge == null) continue;
+
+                while (edge != rightBound)
+                {
+                    // nb: For calculating winding counts etc, IntersectEdges() assumes
+                    // that param1 will be to the right of param2 ABOVE the intersection ...
+                    IntersectEdges(rightBound, edge, leftBound.Current); //order important here
+                    edge = edge.NextInAel;
                 }
             }
         }
@@ -1080,10 +1198,18 @@ namespace Clipper
             {
                 if (startEdge == null) startEdge = _activeEdges;
                 while (startEdge.NextInAel != null &&
-                  !E2InsertsBeforeE1(startEdge.NextInAel, edge))
+                       !E2InsertsBeforeE1(startEdge.NextInAel, edge))
+                {
                     startEdge = startEdge.NextInAel;
+                }
+
                 edge.NextInAel = startEdge.NextInAel;
-                if (startEdge.NextInAel != null) startEdge.NextInAel.PrevInAel = edge;
+
+                if (startEdge.NextInAel != null)
+                {
+                    startEdge.NextInAel.PrevInAel = edge;
+                }
+
                 edge.PrevInAel = startEdge;
                 startEdge.NextInAel = edge;
             }
@@ -1091,29 +1217,25 @@ namespace Clipper
 
         private static bool E2InsertsBeforeE1(Edge e1, Edge e2)
         {
-            if (e2.Current.X == e1.Current.X)
-            {
-                if (e2.Top.Y > e1.Top.Y)
-                    return e2.Top.X < TopX(e1, e2.Top.Y);
-                else return e1.Top.X > TopX(e2, e1.Top.Y);
-            }
-            else return e2.Current.X < e1.Current.X;
+            return e2.Current.X == e1.Current.X
+                ? (e2.Top.Y > e1.Top.Y
+                    ? e2.Top.X < TopX(e1, e2.Top.Y)
+                    : e1.Top.X > TopX(e2, e1.Top.Y))
+                : e2.Current.X < e1.Current.X;
         }
 
         private bool IsEvenOddFillType(Edge edge)
         {
-            if (edge.Kind == PolygonKind.Subject)
-                return _subjFillType == PolygonFillType.EvenOdd;
-            else
-                return _clipFillType == PolygonFillType.EvenOdd;
+            return edge.Kind == PolygonKind.Subject
+                ? _subjFillType == PolygonFillType.EvenOdd
+                : _clipFillType == PolygonFillType.EvenOdd;
         }
 
         private bool IsEvenOddAltFillType(Edge edge)
         {
-            if (edge.Kind == PolygonKind.Subject)
-                return _clipFillType == PolygonFillType.EvenOdd;
-            else
-                return _subjFillType == PolygonFillType.EvenOdd;
+            return edge.Kind == PolygonKind.Subject
+                ? _clipFillType == PolygonFillType.EvenOdd
+                : _subjFillType == PolygonFillType.EvenOdd;
         }
 
         private bool IsContributing(Edge edge)
@@ -1133,15 +1255,21 @@ namespace Clipper
             switch (pft)
             {
                 case PolygonFillType.EvenOdd:
-                    //return false if a subj line has been flagged as inside a subj polygon
+                    // return false if a subj line has been flagged as inside a subj polygon
                     if (edge.WindDelta == 0 && edge.WindCount != 1) return false;
                     break;
+
                 case PolygonFillType.NonZero:
                     if (Math.Abs(edge.WindCount) != 1) return false;
                     break;
+
                 case PolygonFillType.Positive:
                     if (edge.WindCount != 1) return false;
                     break;
+
+                case PolygonFillType.Negative:
+                    break;
+
                 default: //PolygonFillType.Negative
                     if (edge.WindCount != -1) return false;
                     break;
@@ -1150,16 +1278,19 @@ namespace Clipper
             switch (_mClipOperation)
             {
                 case ClipOperation.Intersection:
-                    switch (pft2)
                     {
-                        case PolygonFillType.EvenOdd:
-                        case PolygonFillType.NonZero:
-                            return (edge.WindCount2 != 0);
-                        case PolygonFillType.Positive:
-                            return (edge.WindCount2 > 0);
-                        default:
-                            return (edge.WindCount2 < 0);
+                        switch (pft2)
+                        {
+                            case PolygonFillType.EvenOdd:
+                            case PolygonFillType.NonZero:
+                                return (edge.WindCount2 != 0);
+                            case PolygonFillType.Positive:
+                                return (edge.WindCount2 > 0);
+                            default:
+                                return (edge.WindCount2 < 0);
+                        }
                     }
+
                 case ClipOperation.Union:
                     switch (pft2)
                     {
@@ -1171,8 +1302,10 @@ namespace Clipper
                         default:
                             return (edge.WindCount2 >= 0);
                     }
+
                 case ClipOperation.Difference:
                     if (edge.Kind == PolygonKind.Subject)
+                    {
                         switch (pft2)
                         {
                             case PolygonFillType.EvenOdd:
@@ -1183,6 +1316,7 @@ namespace Clipper
                             default:
                                 return (edge.WindCount2 >= 0);
                         }
+                    }
                     else
                         switch (pft2)
                         {
@@ -1194,8 +1328,10 @@ namespace Clipper
                             default:
                                 return (edge.WindCount2 < 0);
                         }
+
                 case ClipOperation.Xor:
                     if (edge.WindDelta == 0) //XOr always contributing unless open
+                    {
                         switch (pft2)
                         {
                             case PolygonFillType.EvenOdd:
@@ -1206,23 +1342,37 @@ namespace Clipper
                             default:
                                 return (edge.WindCount2 >= 0);
                         }
-                    else
-                        return true;
+                    }
+
+                    return true;
             }
+
             return true;
         }
 
         private void SetWindingCount(Edge edge)
         {
-            Edge e = edge.PrevInAel;
+            var e = edge.PrevInAel;
+            
             //find the edge of the same polytype that immediately preceeds 'edge' in AEL
-            while (e != null && ((e.Kind != edge.Kind) || (e.WindDelta == 0))) e = e.PrevInAel;
+            while (e != null && (e.Kind != edge.Kind || e.WindDelta == 0))
+            {
+                e = e.PrevInAel;
+            }
+
             if (e == null)
             {
-                PolygonFillType pft;
-                pft = (edge.Kind == PolygonKind.Subject ? _subjFillType : _clipFillType);
-                if (edge.WindDelta == 0) edge.WindCount = (pft == PolygonFillType.Negative ? -1 : 1);
-                else edge.WindCount = edge.WindDelta;
+                var fillType = edge.Kind == PolygonKind.Subject ? _subjFillType : _clipFillType;
+
+                if (edge.WindDelta == 0)
+                {
+                    edge.WindCount = (fillType == PolygonFillType.Negative ? -1 : 1);
+                }
+                else
+                {
+                    edge.WindCount = edge.WindDelta;
+                }
+
                 edge.WindCount2 = 0;
                 e = _activeEdges; //ie get ready to calc WindCount2
             }
@@ -1238,15 +1388,17 @@ namespace Clipper
                 if (edge.WindDelta == 0)
                 {
                     //are we inside a subj polygon ...
-                    bool Inside = true;
-                    Edge e2 = e.PrevInAel;
+                    var inside = true;
+                    var e2 = e.PrevInAel;
+
                     while (e2 != null)
                     {
                         if (e2.Kind == e.Kind && e2.WindDelta != 0)
-                            Inside = !Inside;
+                            inside = !inside;
                         e2 = e2.PrevInAel;
                     }
-                    edge.WindCount = (Inside ? 0 : 1);
+
+                    edge.WindCount = inside ? 0 : 1;
                 }
                 else
                 {
@@ -1347,7 +1499,7 @@ namespace Clipper
 
         private void CopyAeltoSel()
         {
-            Edge e = _activeEdges;
+            var e = _activeEdges;
             _sortedEdges = e;
             while (e != null)
             {
@@ -1475,7 +1627,7 @@ namespace Clipper
         {
             if (edge.OutIndex < 0)
             {
-                OutputPolygon outputPolygon = CreateOutRec();
+                OutputPolygon outputPolygon = CreateOutPolygon();
                 outputPolygon.IsOpen = (edge.WindDelta == 0);
                 OutputPoint newOp = new OutputPoint();
                 outputPolygon.Points = newOp;
@@ -1984,8 +2136,8 @@ namespace Clipper
 
         private void ProcessHorizontals()
         {
-            //_sortedEdges;
-            while (PopEdgeFromSel(out var horzEdge))
+            Edge horzEdge;
+            while (PopEdgeFromSel(out horzEdge))
             {
                 ProcessHorizontal(horzEdge);
             }
@@ -3193,7 +3345,7 @@ namespace Clipper
                     //splitting one polygon into two.
                     outRec1.Points = join.OutPoint1;
                     outRec1.BottomPoint = null;
-                    outRec2 = CreateOutRec();
+                    outRec2 = CreateOutPolygon();
                     outRec2.Points = join.OutPoint2;
 
                     //update all OutRec2.Points Index's ...
@@ -3289,7 +3441,7 @@ namespace Clipper
                             op3.Next = op2;
 
                             outrec.Points = op;
-                            OutputPolygon outrec2 = CreateOutRec();
+                            OutputPolygon outrec2 = CreateOutPolygon();
                             outrec2.Points = op2;
                             UpdateOutPtIdxs(outrec2);
                             if (Poly2ContainsPoly1(outrec2.Points, outrec.Points))

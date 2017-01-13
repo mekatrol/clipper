@@ -6,7 +6,7 @@ namespace Clipper
     /// </summary>
     internal class OutputPolygon
     {
-        internal int Index;
+        internal int Index = ClippingHelper.Unassigned;
         internal bool IsHole;
         internal bool IsOpen;
         internal OutputPolygon FirstLeft; //see comments in clipper.pas
