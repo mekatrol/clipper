@@ -60,7 +60,7 @@ namespace Clipper
         {
             var polygonPath = Minkowski(pattern, path, true, pathIsClosed);
             var clipper = new Clipper();
-            clipper.AddPaths(polygonPath, PolygonKind.Subject);
+            clipper.AddPath(polygonPath, PolygonKind.Subject);
             clipper.Execute(ClipOperation.Union, polygonPath, PolygonFillType.NonZero, PolygonFillType.NonZero);
             return polygonPath;
         }
@@ -73,14 +73,14 @@ namespace Clipper
             foreach (var polygon in paths)
             {
                 var tmp = Minkowski(pattern, polygon, true, pathIsClosed);
-                clipper.AddPaths(tmp, PolygonKind.Subject);
+                clipper.AddPath(tmp, PolygonKind.Subject);
                 if (!pathIsClosed)
                 {
                     continue;
                 }
 
-                var path = polygon.Translated(pattern[0]);
-                clipper.AddPath(path, PolygonKind.Clip);
+                var translated = polygon.Translated(pattern[0]);
+                clipper.AddPath(translated, PolygonKind.Clip);
             }
 
             clipper.Execute(ClipOperation.Union, solution, PolygonFillType.NonZero, PolygonFillType.NonZero);
@@ -92,7 +92,7 @@ namespace Clipper
         {
             var path = Minkowski(poly1, poly2, false, true);
             var clipper = new Clipper();
-            clipper.AddPaths(path, PolygonKind.Subject);
+            clipper.AddPath(path, PolygonKind.Subject);
             clipper.Execute(ClipOperation.Union, path, PolygonFillType.NonZero, PolygonFillType.NonZero);
             return path;
         }

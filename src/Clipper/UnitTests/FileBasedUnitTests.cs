@@ -20,11 +20,11 @@ namespace UnitTests
             {
                 var clipper = new Clipper.Clipper();
 
-                clipper.AddPaths(test.Subjects, PolygonKind.Subject);
-                clipper.AddPaths(test.Clips, PolygonKind.Clip);
+                clipper.AddPath(test.Subjects, PolygonKind.Subject);
+                clipper.AddPath(test.Clips, PolygonKind.Clip);
 
                 var solution = new PolygonTree();
-                Assert.IsTrue(clipper.Execute(test.ClipOperation, solution, test.FillType));
+                Assert.IsTrue(clipper.Execute(test.ClipOperation, solution, false, test.FillType));
 
                 var path = new PolygonPath(solution.AllPolygons.Select(n => n.Polygon).ToList());
 

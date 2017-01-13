@@ -10,6 +10,10 @@ Changes from the original Angus code base:
 
 3. Support for Z value on IntPoint dropped (the use_xyz define no longer supported).
 
+4. Removed PreserveCollinear property from clipper.
+
+5. The ReverseSolution flag changed to ReverseOrientation.
+
 
 The solution is made up of:
 

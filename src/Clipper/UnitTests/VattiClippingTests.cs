@@ -94,7 +94,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 2.0));
             Assert.AreEqual(1, solution.Count);
@@ -138,7 +138,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 100.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 200.0));
             Assert.AreEqual(1, solution.Count);
@@ -182,7 +182,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 100.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 150.0));
             Assert.AreEqual(1, solution.Count);
@@ -226,7 +226,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 25.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             // Area is (2 * 50 * 50) - (1 * 25 * 25)
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - ((2 * 5.0 * 5.0) - (2.5 * 2.5))));
@@ -275,7 +275,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 2000000));
             Assert.AreEqual(2, solution.Count);
@@ -319,7 +319,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(subject.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, null, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, null, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1000000));
             Assert.AreEqual(1, solution.Count);
@@ -362,7 +362,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.AreEqual(2, solution.Count);
             var area = solution.Area * AreaScaleInverse;
@@ -407,7 +407,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 2500.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             // Area is (25 * 25)
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - (25 * 25)));
@@ -452,7 +452,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 100.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 50.0));
             Assert.AreEqual(1, solution.Count);
@@ -496,7 +496,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area - AreaScale));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area));
             Assert.AreEqual(0, solution.Count);
@@ -529,7 +529,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 2500.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Xor, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Xor, subject, clip, solution));
 
             // Area is:
             // 1: the two original polygon path areas (2 * 50 * 50)
@@ -594,7 +594,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Xor, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Xor, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 2000000));
             Assert.AreEqual(2, solution.Count);
@@ -647,7 +647,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 2500.0));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
 
             // Area is:
             // 1: the original source polygon path area (50 * 50)
@@ -695,7 +695,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1000000));
             Assert.AreEqual(1, solution.Count);
@@ -900,7 +900,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(subject.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, null, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, null, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1000000));
             Assert.AreEqual(1, solution.Count);
@@ -941,7 +941,7 @@ namespace UnitTests
 
             Assert.IsTrue(GeometryHelper.NearZero(subject.Area * AreaScaleInverse - 1000000));
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, null, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, null, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1000000));
             Assert.AreEqual(1, solution.Count);
@@ -982,7 +982,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 150000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 285714.2857));
             Assert.AreEqual(1, solution.Count);
@@ -1001,7 +1001,7 @@ namespace UnitTests
             Assert.AreEqual(+250 * Scale, polygon[7].X); Assert.AreEqual(-250 * Scale, polygon[7].Y);
 
             solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 14285.71428));
             Assert.AreEqual(1, solution.Count);
@@ -1016,7 +1016,7 @@ namespace UnitTests
 
 
             solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 135714.28571));
             Assert.AreEqual(1, solution.Count);
             polygon = solution[0];
@@ -1031,7 +1031,7 @@ namespace UnitTests
             Assert.AreEqual(-250 * Scale, polygon[5].X); Assert.AreEqual(-250 * Scale, polygon[5].Y);
 
             solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Xor, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Xor, subject, clip, solution));
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 271428.57142));
             Assert.AreEqual(2, solution.Count);
             polygon = solution[0];
@@ -1081,7 +1081,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 2000000));
             Assert.AreEqual(2, solution.Count);
@@ -1107,13 +1107,13 @@ namespace UnitTests
             Assert.AreEqual(-0500 * Scale, polygon[3].X); Assert.AreEqual(-1000 * Scale, polygon[3].Y);
 
             solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area));
             Assert.AreEqual(0, solution.Count);
 
             solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1000000));
             Assert.AreEqual(1, solution.Count);
 
@@ -1127,7 +1127,7 @@ namespace UnitTests
             Assert.AreEqual(+0000 * Scale, polygon[3].X); Assert.AreEqual(+0000 * Scale, polygon[3].Y);
 
             solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Xor, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Xor, subject, clip, solution));
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 2000000));
             Assert.AreEqual(2, solution.Count);
             polygon = solution[0];
@@ -1185,7 +1185,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 750000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 750000));
             Assert.AreEqual(2, solution.Count);
@@ -1257,7 +1257,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - (900 * 1000 - 200 * 600)));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - (800 * 1000 - 200 * 600 - 200 * 600)));
             Assert.AreEqual(3, solution.Count);
@@ -1329,7 +1329,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1270000));
             Assert.AreEqual(2, solution.Count);
@@ -1407,7 +1407,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - (4000000 - 640000)));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 3360000));
             Assert.AreEqual(2, solution.Count);
@@ -1479,7 +1479,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - (1000000 - 640000)));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - (1000000 - 640000)));
             Assert.AreEqual(2, solution.Count);
@@ -1542,7 +1542,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 0.0100));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 0.0127));
             Assert.AreEqual(2, solution.Count);
@@ -1612,7 +1612,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - clipArea));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - solutionArea));
             Assert.AreEqual(2, solution.Count);
@@ -1678,7 +1678,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - clipArea));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - solutionArea));
             Assert.AreEqual(1, solution.Count);
@@ -1735,7 +1735,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - clipArea));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - solutionArea));
             Assert.AreEqual(1, solution.Count);
@@ -1797,7 +1797,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - clip1Area));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 12699999999.999998));
             Assert.AreEqual(2, solution.Count);
@@ -1866,7 +1866,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 90000));
             Assert.AreEqual(1, solution.Count);
@@ -1921,7 +1921,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 2102500));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 262500));
             Assert.AreEqual(2, solution.Count);
@@ -1984,7 +1984,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 270000));
             Assert.AreEqual(1, solution.Count);
@@ -2043,7 +2043,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 2102500));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Difference, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Difference, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 97500));
             Assert.AreEqual(1, solution.Count);
@@ -2098,7 +2098,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 1000000));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Xor, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Xor, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1180000));
             Assert.AreEqual(3, solution.Count);
@@ -2179,7 +2179,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 2102500));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Xor, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Xor, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 1937500));
             Assert.AreEqual(3, solution.Count);
@@ -2259,7 +2259,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area * AreaScaleInverse - 35));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - 10.5));
             Assert.AreEqual(3, solution.Count);
@@ -2361,7 +2361,7 @@ namespace UnitTests
             Assert.IsTrue(GeometryHelper.NearZero(clip.Area));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area * AreaScaleInverse - (1000000 - 640000)));
             Assert.AreEqual(2, solution.Count);
@@ -2419,7 +2419,7 @@ namespace UnitTests
                 });
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, null, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, null, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area - (subject1.Area - subject2.Area)));
             Assert.AreEqual(2, solution.Count);
@@ -2484,7 +2484,7 @@ namespace UnitTests
                 });
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, null, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, null, solution));
 
             Assert.IsTrue(GeometryHelper.NearZero(solution.Area - (subject1.Area - subject2.Area)));
             Assert.AreEqual(2, solution.Count);
@@ -2549,7 +2549,7 @@ namespace UnitTests
                 }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Union, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Union, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(12, solution[0].Count);
@@ -2573,7 +2573,7 @@ namespace UnitTests
             subject.ReversePolygonOrientations();
             clip.ReversePolygonOrientations();
 
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(12, solution[0].Count);
@@ -2613,7 +2613,7 @@ namespace UnitTests
                 }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(3, solution[0].Count);
@@ -2627,7 +2627,7 @@ namespace UnitTests
             subject.ReversePolygonOrientations();
             clip.ReversePolygonOrientations();
 
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(3, solution[0].Count);
@@ -2659,7 +2659,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(3, solution[0].Count);
@@ -2689,7 +2689,7 @@ namespace UnitTests
                 }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(3, solution[0].Count);
@@ -2719,7 +2719,7 @@ namespace UnitTests
                 }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(3, solution[0].Count);
@@ -2749,7 +2749,7 @@ namespace UnitTests
                 }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(0, solution.Count);
         }
@@ -2773,7 +2773,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(3, solution[0].Count);
@@ -2802,7 +2802,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(4, solution[0].Count);
@@ -2836,7 +2836,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var tree = new PolygonTree();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = PolygonPath.FromTree(tree);
 
@@ -2874,7 +2874,7 @@ namespace UnitTests
             });
 
             var tree = new PolygonTree();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, tree));
             var solution = PolygonPath.FromTree(tree);
 
             Assert.AreEqual(2, solution.Count);
@@ -2912,7 +2912,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
 
@@ -2946,7 +2946,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(4, solution[0].Count);
@@ -2977,7 +2977,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(2, solution.Count);
 
@@ -3018,7 +3018,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
 
@@ -3060,7 +3060,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(2, solution.Count);
 
@@ -3106,7 +3106,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.AreEqual(9, solution[0].Count);
@@ -3141,7 +3141,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(0, solution.Count);
         }
@@ -3166,7 +3166,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(0, solution.Count);
         }
@@ -3191,7 +3191,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(0, solution.Count);
         }
@@ -3216,7 +3216,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+04.0 * Scale, +03.0 * Scale) - solution[0][0]).Length));
@@ -3259,7 +3259,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(2, solution.Count);
 
@@ -3323,7 +3323,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(4, solution.Count);
 
@@ -3384,7 +3384,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
 
@@ -3421,7 +3421,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
 
@@ -3462,7 +3462,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
 
@@ -3497,7 +3497,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var solution = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, solution));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, solution));
 
             Assert.AreEqual(1, solution.Count);
 
@@ -3556,7 +3556,7 @@ namespace UnitTests
                 });
 
             var tree = new PolygonTree();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = PolygonPath.FromTree(tree);
 
@@ -3611,7 +3611,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var tree = new PolygonTree();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = PolygonPath.FromTree(tree);
 
@@ -3644,7 +3644,7 @@ namespace UnitTests
             }.Select(p => new IntPoint(p * Scale))));
 
             var tree = new PolygonPath();
-            Assert.IsTrue(ClippingHelper.Execute(ClipOperation.Intersection, subject, clip, tree));
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, tree));
 
             var solution = new PolygonPath(tree);
 

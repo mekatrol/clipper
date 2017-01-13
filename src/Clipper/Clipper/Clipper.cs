@@ -64,25 +64,205 @@ namespace Clipper
         private Maxima _maxima;
         private Edge _sortedEdges;
         private readonly IntersectionList _intersectList = new IntersectionList();
-        private bool _executeLocked;
         private PolygonFillType _clipFillType;
-        private PolygonFillType _subjFillType;
+        private PolygonFillType _subjectFillType;
         private readonly List<Join> _joins = new List<Join>();
         private readonly List<Join> _ghostJoins = new List<Join>();
-        private bool _usingTreeSolution;
+        private SolutonType _solutionType;
 
-        public bool PreserveCollinear { get; set; }
+        /// <summary>
+        /// When true, polygons will be converted to clockwise orientation and
+        /// holes will be converted to counterclockwise orientation.
+        /// The normal convention is that polygons are counterclockwise and hole are clockwise.
+        /// </summary>
+        public bool ReverseOrientation { get; set; }
 
-        public bool ReverseSolution { get; set; }
+        /// <summary>
+        /// When set to true, the resultant polygons will be simplified:
+        /// 1. Remove self intersecting polygons by splitting them into multiple polygons.
+        /// 2. Remove duplicate consecutive vertices.
+        /// 3. Merge collinear edges.
+        /// </summary>
+        public bool SimplifySolution { get; set; }
 
-        public bool StrictlySimple { get; set; }
-
-        public virtual void Clear()
+        public bool AddPath(Polygon polygon, PolygonKind polygonKind)
         {
-            _currentLocalMinima = null;
-            _minimaList = null;
-            _useFullRange = false;
-            _hasOpenPaths = false;
+#if use_lines
+            if (!polygon.IsClosed && polygonKind == PolygonKind.Clip)
+                throw new Exception("AddPath: Open paths must be subject.");
+#else
+      if (!Closed)
+        throw new ClipperException("AddPath: Open paths have been disabled.");
+#endif
+
+            // Step 1 - Remove duplicate vertices and collinear edges.
+            var simplifiedPolygon = polygon.Simplified();
+
+            // Closed polygons must have at least 3 vertices, and open polygons at least 2.
+            var minVertexCount = simplifiedPolygon.IsClosed ? 3 : 2;
+            if (simplifiedPolygon.Count < minVertexCount) return false;
+
+            // Step 2 - Create a new edge array and perform basic initialization.
+            var edges = Enumerable
+                .Range(0, simplifiedPolygon.Count)
+                .Select(i => new Edge
+                {
+                    Current = simplifiedPolygon[i],
+                    OutIndex = ClippingHelper.Unassigned,
+                    Kind = polygonKind
+                })
+                .ToArray();
+
+            var lastIndex = simplifiedPolygon.Count - 1;
+
+            // Step 3 - Initialize polygon boundary edges as well as range test vertex values.
+            GeometryHelper.RangeTest(simplifiedPolygon[0], ref _useFullRange);
+            GeometryHelper.RangeTest(simplifiedPolygon[lastIndex], ref _useFullRange);
+
+            edges[0].SetBoundaryLinks(edges[1], edges[lastIndex]);
+            edges[lastIndex].SetBoundaryLinks(edges[0], edges[lastIndex - 1]);
+
+            for (var i = lastIndex - 1; i >= 1; --i)
+            {
+                GeometryHelper.RangeTest(simplifiedPolygon[i], ref _useFullRange);
+                edges[i].SetBoundaryLinks(edges[i + 1], edges[i - 1]);
+            }
+
+            // Step 4 - Initialize open path settings.
+            if (!simplifiedPolygon.IsClosed)
+            {
+                _hasOpenPaths = true;
+                edges[0].Prev.OutIndex = ClippingHelper.Skip;
+            }
+
+            // Step 5 - Initialize boundary geometry.
+            var edge = edges[0];
+            var isFlat = true;
+            do
+            {
+                edge.InitializeGeometry();
+                edge = edge.Next;
+
+                if (isFlat && edge.Current.Y != edges[0].Current.Y) isFlat = false;
+            }
+            while (edge != edges[0]);
+
+            // Step 6 - Build LML
+            return isFlat
+                ? BuildFlatLml(simplifiedPolygon, edges)
+                : BuildLml(simplifiedPolygon, edges);
+        }
+
+        public bool AddPath(PolygonPath path, PolygonKind polygonKind)
+        {
+            var result = false;
+            foreach (var polygon in path)
+            {
+                if (AddPath(polygon, polygonKind))
+                {
+                    result = true;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Perform clip operation with the defaults:
+        ///   simplify = false
+        ///   subjectFillType = PolygonFillType.EvenOdd
+        ///   clipFillType = PolygonFillType.EvenOdd
+        /// Any paths were added using AddPath prior to this call.
+        /// </summary>
+        public bool Execute<T>(
+            ClipOperation operation,
+            T solution) where T : IClipSolution
+        {
+            return Execute(operation, solution, false);
+        }
+
+        /// <summary>
+        /// Perform clip operation with the defaults:
+        ///   simplify = false
+        /// Any paths were added using AddPath prior to this call.
+        /// </summary>
+        public bool Execute<T>(
+            ClipOperation operation,
+            T solution,
+            PolygonFillType subjectFillType,
+            PolygonFillType clipFillType) where T : IClipSolution
+        {
+            return Execute(operation, solution, false, subjectFillType, clipFillType);
+        }
+
+        /// <summary>
+        /// Perform clip operation, paths can be added in this call
+        /// and paths could have be added using AddPath prior to this call.
+        /// </summary>
+        public bool Execute<T>(
+            ClipOperation operation,
+            PolygonPath subject,
+            PolygonPath clip,
+            T solution,
+            bool simplify = false,
+            PolygonFillType subjectFillType = PolygonFillType.EvenOdd,
+            PolygonFillType clipFillType = PolygonFillType.EvenOdd) where T : IClipSolution
+        {
+            // Add polygons.
+            if (subject != null) { AddPath(subject, PolygonKind.Subject); }
+            if (clip != null) { AddPath(clip, PolygonKind.Clip); }
+
+            return Execute(operation, solution, simplify, subjectFillType, clipFillType);
+        }
+
+        /// <summary>
+        /// Any paths were added using AddPath prior to this call.
+        /// </summary>
+        public bool Execute<T>(
+            ClipOperation operation,
+            T solution,
+            bool simplify,
+            PolygonFillType subjectFillType = PolygonFillType.EvenOdd,
+            PolygonFillType clipFillType = PolygonFillType.EvenOdd) where T : IClipSolution
+        {
+            // Record simplify solution flag.
+            SimplifySolution = simplify;
+
+            // Set execution parameters.
+            _subjectFillType = subjectFillType;
+            _clipFillType = clipFillType;
+            _clipOperation = operation;
+            _solutionType = solution.SolutionType;
+
+            // Make sure right structure being used for solution and open paths.
+            if (_solutionType == SolutonType.Path && _hasOpenPaths)
+            {
+                throw new Exception("PolygonTree solution type must be used for open path clipping.");
+            }
+
+            // Clear solution (in case it is being re-executed).
+            // This must be called after adding polygons in case 
+            // the solution path instance is also used as subject or clip path.
+            solution.Clear();
+            _outputPolygons.Clear();
+
+            if (!ExecuteInternal())
+            {
+                return false;
+            }
+
+            switch (_solutionType)
+            {
+                case SolutonType.Path:
+                    BuildResult(solution as PolygonPath);
+                    return true;
+
+                case SolutonType.Tree:
+                    BuildResult(solution as PolygonTree);
+                    return true;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(solution.SolutionType));
+            }
         }
 
         private static Edge FindNextLocalMinima(Edge edge)
@@ -265,78 +445,10 @@ namespace Clipper
                     edge.ReverseHorizontal();
                 }
 
-                result = result.Prev; //move to the edge just beyond current bound
+                result = result.Prev; // Move to the edge just beyond current bound
             }
 
             return result;
-        }
-
-        public bool AddPath(Polygon polygon, PolygonKind polygonKind)
-        {
-#if use_lines
-            if (!polygon.IsClosed && polygonKind == PolygonKind.Clip)
-                throw new Exception("AddPath: Open paths must be subject.");
-#else
-      if (!Closed)
-        throw new ClipperException("AddPath: Open paths have been disabled.");
-#endif
-
-            // Step 1 - Remove duplicate vertices and collinear edges.
-            var simplifiedPolygon = polygon.Simplified();
-
-            // Closed polygons must have at least 3 vertices, and open polygons at least 2.
-            var minVertexCount = simplifiedPolygon.IsClosed ? 3 : 2;
-            if (simplifiedPolygon.Count < minVertexCount) return false;
-
-            // Step 2 - Create a new edge array and perform basic initialization.
-            var edges = Enumerable
-                .Range(0, simplifiedPolygon.Count)
-                .Select(i => new Edge
-                {
-                    Current = simplifiedPolygon[i],
-                    OutIndex = ClippingHelper.Unassigned,
-                    Kind = polygonKind
-                })
-                .ToArray();
-
-            var lastIndex = simplifiedPolygon.Count - 1;
-
-            // Step 3 - Initialize polygon boundary edges as well as range test vertex values.
-            GeometryHelper.RangeTest(simplifiedPolygon[0], ref _useFullRange);
-            GeometryHelper.RangeTest(simplifiedPolygon[lastIndex], ref _useFullRange);
-
-            edges[0].SetBoundaryLinks(edges[1], edges[lastIndex]);
-            edges[lastIndex].SetBoundaryLinks(edges[0], edges[lastIndex - 1]);
-
-            for (var i = lastIndex - 1; i >= 1; --i)
-            {
-                GeometryHelper.RangeTest(simplifiedPolygon[i], ref _useFullRange);
-                edges[i].SetBoundaryLinks(edges[i + 1], edges[i - 1]);
-            }
-
-            // Step 4 - Initialize open path settings.
-            if (!simplifiedPolygon.IsClosed)
-            {
-                _hasOpenPaths = true;
-                edges[0].Prev.OutIndex = ClippingHelper.Skip;
-            }
-
-            // Step 5 - Initialize boundary geometry.
-            var edge = edges[0];
-            var isFlat = true;
-            do
-            {
-                edge.InitializeGeometry();
-                edge = edge.Next;
-
-                if (isFlat && edge.Current.Y != edges[0].Current.Y) isFlat = false;
-            }
-            while (edge != edges[0]);
-
-            // Step 6 - Build LML
-            return isFlat 
-                ? BuildFlatLml(simplifiedPolygon, edges)
-                : BuildLml(simplifiedPolygon, edges);
         }
 
         private bool BuildFlatLml(Polygon polygon, IReadOnlyList<Edge> edges)
@@ -469,19 +581,6 @@ namespace Clipper
             }
 
             return true;
-        }
-
-        public bool AddPaths(PolygonPath path, PolygonKind polygonKind)
-        {
-            var result = false;
-            foreach (var polygon in path)
-            {
-                if (AddPath(polygon, polygonKind))
-                {
-                    result = true;
-                }
-            }
-            return result;
         }
 
         private void InsertLocalMinima(LocalMinima localMinima)
@@ -868,76 +967,6 @@ namespace Clipper
             }
         }
 
-        public bool Execute(ClipOperation clipOperation, PolygonPath solution,
-            PolygonFillType fillType = PolygonFillType.EvenOdd)
-        {
-            return Execute(clipOperation, solution, fillType, fillType);
-        }
-
-        public bool Execute(ClipOperation clipOperation, PolygonTree polytree,
-            PolygonFillType fillType = PolygonFillType.EvenOdd)
-        {
-            return Execute(clipOperation, polytree, fillType, fillType);
-        }
-
-        public bool Execute(ClipOperation clipOperation, PolygonPath solution,
-            PolygonFillType subjFillType, PolygonFillType clipFillType)
-        {
-            if (_executeLocked) return false;
-
-            if (_hasOpenPaths)
-            {
-                throw new Exception("Error: PolygonTree struct is needed for open path clipping.");
-            }
-
-            _executeLocked = true;
-            solution.Clear();
-            _subjFillType = subjFillType;
-            _clipFillType = clipFillType;
-            _clipOperation = clipOperation;
-            _usingTreeSolution = false;
-            bool succeeded;
-            try
-            {
-                succeeded = ExecuteInternal();
-                //build the return polygons ...
-                if (succeeded)
-                {
-                    BuildResult(solution);
-                }
-            }
-            finally
-            {
-                _outputPolygons.Clear();
-                _executeLocked = false;
-            }
-            return succeeded;
-        }
-
-        public bool Execute(ClipOperation clipOperation, PolygonTree polytree,
-            PolygonFillType subjFillType, PolygonFillType clipFillType)
-        {
-            if (_executeLocked) return false;
-            _executeLocked = true;
-            _subjFillType = subjFillType;
-            _clipFillType = clipFillType;
-            _clipOperation = clipOperation;
-            _usingTreeSolution = true;
-            bool succeeded;
-            try
-            {
-                succeeded = ExecuteInternal();
-                //build the return polygons ...
-                if (succeeded) BuildResult(polytree);
-            }
-            finally
-            {
-                _outputPolygons.Clear();
-                _executeLocked = false;
-            }
-            return succeeded;
-        }
-
         internal void FixHoleLinkage(OutputPolygon outputPolygon)
         {
             //skip if an outermost polygon or
@@ -990,7 +1019,7 @@ namespace Clipper
             foreach (var outputPolygon in _outputPolygons)
             {
                 if (outputPolygon.Points == null || outputPolygon.IsOpen) continue;
-                if ((outputPolygon.IsHole ^ ReverseSolution) ==
+                if ((outputPolygon.IsHole ^ ReverseOrientation) ==
                     (outputPolygon.Orientation == PolygonOrientation.CounterClockwise))
                 {
                     ReverseLinks(outputPolygon.Points);
@@ -1016,7 +1045,7 @@ namespace Clipper
                 }
             }
 
-            if (StrictlySimple)
+            if (SimplifySolution)
             {
                 DoSimplePolygons();
             }
@@ -1206,7 +1235,7 @@ namespace Clipper
         private bool IsEvenOddFillType(Edge edge)
         {
             return edge.Kind == PolygonKind.Subject
-                ? _subjFillType == PolygonFillType.EvenOdd
+                ? _subjectFillType == PolygonFillType.EvenOdd
                 : _clipFillType == PolygonFillType.EvenOdd;
         }
 
@@ -1214,7 +1243,7 @@ namespace Clipper
         {
             return edge.Kind == PolygonKind.Subject
                 ? _clipFillType == PolygonFillType.EvenOdd
-                : _subjFillType == PolygonFillType.EvenOdd;
+                : _subjectFillType == PolygonFillType.EvenOdd;
         }
 
         private bool IsContributing(Edge edge)
@@ -1222,13 +1251,13 @@ namespace Clipper
             PolygonFillType pft, pft2;
             if (edge.Kind == PolygonKind.Subject)
             {
-                pft = _subjFillType;
+                pft = _subjectFillType;
                 pft2 = _clipFillType;
             }
             else
             {
                 pft = _clipFillType;
-                pft2 = _subjFillType;
+                pft2 = _subjectFillType;
             }
 
             switch (pft)
@@ -1341,7 +1370,7 @@ namespace Clipper
 
             if (e == null)
             {
-                var fillType = edge.Kind == PolygonKind.Subject ? _subjFillType : _clipFillType;
+                var fillType = edge.Kind == PolygonKind.Subject ? _subjectFillType : _clipFillType;
 
                 if (edge.WindDelta == 0)
                 {
@@ -2173,23 +2202,23 @@ namespace Clipper
             PolygonFillType e1FillType, e2FillType, e1FillType2, e2FillType2;
             if (edge1.Kind == PolygonKind.Subject)
             {
-                e1FillType = _subjFillType;
+                e1FillType = _subjectFillType;
                 e1FillType2 = _clipFillType;
             }
             else
             {
                 e1FillType = _clipFillType;
-                e1FillType2 = _subjFillType;
+                e1FillType2 = _subjectFillType;
             }
             if (edge2.Kind == PolygonKind.Subject)
             {
-                e2FillType = _subjFillType;
+                e2FillType = _subjectFillType;
                 e2FillType2 = _clipFillType;
             }
             else
             {
                 e2FillType = _clipFillType;
-                e2FillType2 = _subjFillType;
+                e2FillType2 = _subjectFillType;
             }
 
             int e1Wc, e2Wc;
@@ -2856,7 +2885,7 @@ namespace Clipper
 
                 if (isMaximaEdge)
                 {
-                    if (StrictlySimple)
+                    if (SimplifySolution)
                     {
                         InsertMaxima(edge.Top.X);
                     }
@@ -2883,9 +2912,9 @@ namespace Clipper
                         edge.Current.Y = topY;
                     }
 
-                    // When StrictlySimple and 'edge' is being touched by another edge, then
+                    // When SimplifySolution and 'edge' is being touched by another edge, then
                     // make sure both edges have a vertex here ...
-                    if (StrictlySimple)
+                    if (SimplifySolution)
                     {
                         var prevInAel = edge.PrevInAel;
                         if (edge.OutIndex >= 0 &&
@@ -2898,7 +2927,7 @@ namespace Clipper
                             var point = new IntPoint(edge.Current);
                             var outputPoint1 = AddOutputPoint(prevInAel, point);
                             var outputPoint2 = AddOutputPoint(edge, point);
-                            AddJoin(outputPoint1, outputPoint2, point); // StrictlySimple (type-3) join
+                            AddJoin(outputPoint1, outputPoint2, point); // SimplifySolution (type-3) join
                         }
                     }
 
@@ -3143,7 +3172,6 @@ namespace Clipper
             OutputPoint lastOk = null;
             outputPolygon.BottomPoint = null;
             var polygonPart = outputPolygon.Points;
-            var preserveCol = PreserveCollinear || StrictlySimple;
 
             while (true)
             {
@@ -3152,11 +3180,12 @@ namespace Clipper
                     outputPolygon.Points = null;
                     return;
                 }
-                //test for duplicate points and collinear edges ...
+
+                // Test for duplicate points and collinear edges.
                 if (polygonPart.Point == polygonPart.Next.Point ||
                     polygonPart.Point == polygonPart.Prev.Point ||
                     GeometryHelper.SlopesEqual(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point, _useFullRange) &&
-                    (!preserveCol || !GeometryHelper.Pt2IsBetweenPt1AndPt3(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point)))
+                    (!SimplifySolution || !GeometryHelper.Pt2IsBetweenPt1AndPt3(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point)))
                 {
                     lastOk = null;
                     polygonPart.Prev.Next = polygonPart.Next;
@@ -3383,7 +3412,7 @@ namespace Clipper
             // 2. Non-horizontal joins where Join.OutPoint1 & Join.OutPoint2 are at the same
             //    location at the Bottom of the overlapping segment (& Join.Offset is above).
             //
-            // 3. StrictlySimple joins where edges touch but are not collinear and where
+            // 3. SimplifySolution joins where edges touch but are not collinear and where
             //    Join.OutPoint1, Join.OutPoint2 & Join.Offset all share the same point.
 
             var isHorizontal = j.OutPoint1.Point.Y == j.Offset.Y;
@@ -3804,9 +3833,12 @@ namespace Clipper
                         outputPolygon2.IsHole = !outputPolygon1.IsHole;
                         outputPolygon2.FirstLeft = outputPolygon1;
 
-                        if (_usingTreeSolution) FixupFirstLefts2(outputPolygon2, outputPolygon1);
+                        if (_solutionType == SolutonType.Tree)
+                        {
+                            FixupFirstLefts2(outputPolygon2, outputPolygon1);
+                        }
 
-                        if ((outputPolygon2.IsHole ^ ReverseSolution) == outputPolygon2.Area > 0)
+                        if ((outputPolygon2.IsHole ^ ReverseOrientation) == outputPolygon2.Area > 0)
                             ReverseLinks(outputPolygon2.Points);
 
                     }
@@ -3818,12 +3850,12 @@ namespace Clipper
                         outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
                         outputPolygon1.FirstLeft = outputPolygon2;
 
-                        if (_usingTreeSolution)
+                        if (_solutionType == SolutonType.Tree)
                         {
                             FixupFirstLefts2(outputPolygon1, outputPolygon2);
                         }
 
-                        if ((outputPolygon1.IsHole ^ ReverseSolution) == outputPolygon1.Area > 0)
+                        if ((outputPolygon1.IsHole ^ ReverseOrientation) == outputPolygon1.Area > 0)
                         {
                             ReverseLinks(outputPolygon1.Points);
                         }
@@ -3835,7 +3867,7 @@ namespace Clipper
                         outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
 
                         // fixup FirstLeft pointers that may need reassigning to OutRec2
-                        if (_usingTreeSolution)
+                        if (_solutionType == SolutonType.Tree)
                         {
                             FixupFirstLefts1(outputPolygon1, outputPolygon2);
                         }
@@ -3856,7 +3888,7 @@ namespace Clipper
                     outputPolygon2.FirstLeft = outputPolygon1;
 
                     //fixup FirstLeft pointers that may need reassigning to OutRec1
-                    if (_usingTreeSolution)
+                    if (_solutionType == SolutonType.Tree)
                     {
                         FixupFirstLefts3(outputPolygon2, outputPolygon1);
                     }
@@ -3911,7 +3943,8 @@ namespace Clipper
                                 // outputPolygon2 is contained by outputPolygon1
                                 outputPolygon2.IsHole = !outputPolygon1.IsHole;
                                 outputPolygon2.FirstLeft = outputPolygon1;
-                                if (_usingTreeSolution)
+
+                                if (_solutionType == SolutonType.Tree)
                                 {
                                     FixupFirstLefts2(outputPolygon2, outputPolygon1);
                                 }
@@ -3923,7 +3956,8 @@ namespace Clipper
                                 outputPolygon1.IsHole = !outputPolygon2.IsHole;
                                 outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
                                 outputPolygon1.FirstLeft = outputPolygon2;
-                                if (_usingTreeSolution)
+
+                                if (_solutionType == SolutonType.Tree)
                                 {
                                     FixupFirstLefts2(outputPolygon1, outputPolygon2);
                                 }
@@ -3933,7 +3967,8 @@ namespace Clipper
                                 // the 2 polygons are separate ...
                                 outputPolygon2.IsHole = outputPolygon1.IsHole;
                                 outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
-                                if (_usingTreeSolution)
+
+                                if (_solutionType == SolutonType.Tree)
                                 {
                                     FixupFirstLefts1(outputPolygon1, outputPolygon2);
                                 }

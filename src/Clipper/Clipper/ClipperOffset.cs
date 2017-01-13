@@ -375,10 +375,14 @@ namespace Clipper
 
             //now clean up 'corners' ...
             var clipper = new Clipper();
-            clipper.AddPaths(_destinationPolygons, PolygonKind.Subject);
             if (delta > 0)
             {
-                clipper.Execute(ClipOperation.Union, solution,
+                clipper.Execute(
+                    ClipOperation.Union, 
+                    _destinationPolygons,
+                    null,
+                    solution,
+                    false,
                     PolygonFillType.Positive, PolygonFillType.Positive);
             }
             else
@@ -392,9 +396,16 @@ namespace Clipper
                     new IntPoint(r.Left - 10, r.Top - 10)
                 };
 
-                clipper.AddPath(outer, PolygonKind.Subject);
-                clipper.ReverseSolution = true;
-                clipper.Execute(ClipOperation.Union, solution, PolygonFillType.Negative, PolygonFillType.Negative);
+                clipper.ReverseOrientation = true;
+
+                clipper.Execute(
+                    ClipOperation.Union, 
+                    new PolygonPath(outer),
+                    null,
+                    solution, 
+                    false,
+                    PolygonFillType.Negative, 
+                    PolygonFillType.Negative);
 
                 if (solution.Count > 0)
                 {
@@ -411,10 +422,15 @@ namespace Clipper
 
             //now clean up 'corners' ...
             var clipper = new Clipper();
-            clipper.AddPaths(_destinationPolygons, PolygonKind.Subject);
+
             if (delta > 0)
             {
-                clipper.Execute(ClipOperation.Union, solution,
+                clipper.Execute(
+                    ClipOperation.Union, 
+                    _destinationPolygons, 
+                    null, 
+                    solution, 
+                    false,
                     PolygonFillType.Positive, PolygonFillType.Positive);
             }
             else
@@ -428,9 +444,16 @@ namespace Clipper
                     new IntPoint(r.Left - 10, r.Top - 10)
                 };
 
-                clipper.AddPath(outer, PolygonKind.Subject);
-                clipper.ReverseSolution = true;
-                clipper.Execute(ClipOperation.Union, solution, PolygonFillType.Negative, PolygonFillType.Negative);
+                clipper.ReverseOrientation = true;
+
+                clipper.Execute(
+                    ClipOperation.Union, 
+                    new PolygonPath(outer),
+                    null, 
+                    solution, 
+                    false,
+                    PolygonFillType.Negative, 
+                    PolygonFillType.Negative);
 
                 // remove the outer PolygonNode rectangle ...
                 if (solution.Children.Count == 1 && solution.Children[0].Children.Count > 0)

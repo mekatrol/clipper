@@ -76,8 +76,8 @@ namespace Visualizer
 
             var clipper = new Clipper.Clipper();
 
-            clipper.AddPaths(test.Subjects, PolygonKind.Subject);
-            clipper.AddPaths(test.Clips, PolygonKind.Clip);
+            clipper.AddPath(test.Subjects, PolygonKind.Subject);
+            clipper.AddPath(test.Clips, PolygonKind.Clip);
             clipper.Execute(ClipOperation.Union, _newClipperSolution);
 
             _testBoundary = _testSolution.Any() 
