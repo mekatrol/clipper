@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.IO;
 
 namespace PerformanceTests
 {
@@ -54,6 +55,8 @@ namespace PerformanceTests
 
             var pct = refactoredClipperExecutionTime / (double)originalClipperExecutionTime;
 
+            WritePerformanceToFile("SimplePolygonsTest", pct);
+
             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
 
@@ -78,7 +81,9 @@ namespace PerformanceTests
             var refactoredClipperExecutionTime = ExecuteRefactoredClipper(TestIterationCount, paths);
 
             var pct = refactoredClipperExecutionTime / (double)originalClipperExecutionTime;
-             
+
+            WritePerformanceToFile("ComplexPolygonTest", pct);
+
             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
         }
 
@@ -103,7 +108,15 @@ namespace PerformanceTests
 
             var pct = refactoredClipperExecutionTime / (double)originalClipperExecutionTime;
 
-             Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
+            WritePerformanceToFile("LargePolygonTest", pct);
+
+            Assert.IsTrue(pct <= ExecutionTimeThresholdTolerancePercentage);
+        }
+
+        private static void WritePerformanceToFile(string testName, double percentage)
+        {
+            const string filename = "..\\..\\TestData\\PerformanceStats.txt";
+            File.AppendAllText(filename, $"{DateTime.Now:dd/MM/yyyy HH:mm} {testName.PadRight(25, ' ')} {percentage * 100.0:000.00}%{Environment.NewLine}");
         }
 
         public static long ExecuteRefactoredClipper(int testIterationCount, List<ClipExecutionData> executionData)

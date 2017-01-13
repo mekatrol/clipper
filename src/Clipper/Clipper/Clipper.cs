@@ -334,49 +334,52 @@ namespace Clipper
             while (edge != edges[0]);
 
             // Step 6 - Build LML
-            return BuildLml(simplifiedPolygon, edges, isFlat);
+            return isFlat 
+                ? BuildFlatLml(simplifiedPolygon, edges)
+                : BuildLml(simplifiedPolygon, edges);
         }
 
-        private bool BuildLml(Polygon polygon, IEnumerable<Edge> edges, bool isFlat)
+        private bool BuildFlatLml(Polygon polygon, IReadOnlyList<Edge> edges)
         {
-            var edge = edges.First();
+            var edge = edges[0];
 
             // Totally flat paths must be handled differently when adding them
             // to LocalMinima list to avoid endless loops etc.
-            if (isFlat)
+            // Closed polygons cannot be flat.
+            if (polygon.IsClosed)
             {
-                // Closed polygons cannot be flat.
-                if (polygon.IsClosed)
-                {
-                    return false;
-                }
-
-                edge.Prev.OutIndex = ClippingHelper.Skip;
-
-                var localMinima = new LocalMinima
-                {
-                    Y = edge.Bottom.Y,
-                    LeftBound = null,
-                    RightBound = edge
-                };
-
-                localMinima.RightBound.Side = EdgeSide.Right;
-                localMinima.RightBound.WindDelta = 0;
-
-                while (true)
-                {
-                    if (edge.Bottom.X != edge.Prev.Top.X) { edge.ReverseHorizontal(); }
-                    if (edge.Next.OutIndex == ClippingHelper.Skip) { break; }
-                    edge.NextInLml = edge.Next;
-                    edge = edge.Next;
-                }
-
-                InsertLocalMinima(localMinima);
-
-                return true;
+                return false;
             }
 
+            edge.Prev.OutIndex = ClippingHelper.Skip;
+
+            var localMinima = new LocalMinima
+            {
+                Y = edge.Bottom.Y,
+                LeftBound = null,
+                RightBound = edge
+            };
+
+            localMinima.RightBound.Side = EdgeSide.Right;
+            localMinima.RightBound.WindDelta = 0;
+
+            while (true)
+            {
+                if (edge.Bottom.X != edge.Prev.Top.X) { edge.ReverseHorizontal(); }
+                if (edge.Next.OutIndex == ClippingHelper.Skip) { break; }
+                edge.NextInLml = edge.Next;
+                edge = edge.Next;
+            }
+
+            InsertLocalMinima(localMinima);
+
+            return true;
+        }
+
+        private bool BuildLml(Polygon polygon, IReadOnlyList<Edge> edges)
+        {
             Edge startLocalMinima = null;
+            var edge = edges[0];
 
             while (true)
             {
