@@ -118,6 +118,21 @@ namespace Clipper
             }
         }
 
+        public Polygon Simplified(double epsilon = GeometryHelper.PolygonColinearityScaleConstant)
+        {
+            // Make copy of polygon.
+            var simplified = new Polygon(this)
+            {
+                IsClosed = IsClosed
+            };
+
+            // Simplify the polygon
+            simplified.Simplify(epsilon);
+
+            // Return simplified version
+            return simplified;
+        }
+
         public Polygon Translated(IntPoint offset)
         {
             var translated = new Polygon(Count);

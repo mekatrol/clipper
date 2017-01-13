@@ -1,6 +1,6 @@
 namespace Clipper
 {
-    internal class Scanbeam
+    public class Scanbeam
     {
         internal long Y;
         internal Scanbeam Next;

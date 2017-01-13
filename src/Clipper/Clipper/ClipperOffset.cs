@@ -392,7 +392,7 @@ namespace Clipper
                     new IntPoint(r.Left - 10, r.Top - 10)
                 };
 
-                clipper.AddPath(outer, PolygonKind.Subject, true);
+                clipper.AddPath(outer, PolygonKind.Subject);
                 clipper.ReverseSolution = true;
                 clipper.Execute(ClipOperation.Union, solution, PolygonFillType.Negative, PolygonFillType.Negative);
 
@@ -428,7 +428,7 @@ namespace Clipper
                     new IntPoint(r.Left - 10, r.Top - 10)
                 };
 
-                clipper.AddPath(outer, PolygonKind.Subject, true);
+                clipper.AddPath(outer, PolygonKind.Subject);
                 clipper.ReverseSolution = true;
                 clipper.Execute(ClipOperation.Union, solution, PolygonFillType.Negative, PolygonFillType.Negative);
 

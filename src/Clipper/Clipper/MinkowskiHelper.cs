@@ -80,7 +80,7 @@ namespace Clipper
                 }
 
                 var path = polygon.Translated(pattern[0]);
-                clipper.AddPath(path, PolygonKind.Clip, true);
+                clipper.AddPath(path, PolygonKind.Clip);
             }
 
             clipper.Execute(ClipOperation.Union, solution, PolygonFillType.NonZero, PolygonFillType.NonZero);

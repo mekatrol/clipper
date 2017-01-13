@@ -5,7 +5,7 @@ namespace Clipper
 {
     public static class GeometryHelper
     {
-        public const double Tolerance = double.Epsilon;
+        public const double Tolerance = Double.Epsilon;
         public const double PolygonScaleConstant = 1E7;
         public const double PolygonScaleInverseConstant = 1 / PolygonScaleConstant;
         public const double PolygonColinearityScaleConstant = 1000.0 * PolygonScaleConstant;
@@ -312,11 +312,26 @@ namespace Clipper
                 : DistanceFromLineSqrd(point3, point1, point2) < distanceSquared;
         }
 
-        internal static bool PointsAreClose(IntPoint pt1, IntPoint pt2, double distSqrd)
+        internal static bool PointsAreClose(IntPoint point1, IntPoint point2, double distSqrd)
         {
-            var dx = (double)pt1.X - pt2.X;
-            var dy = (double)pt1.Y - pt2.Y;
+            var dx = (double)point1.X - point2.X;
+            var dy = (double)point1.Y - point2.Y;
             return dx * dx + dy * dy <= distSqrd;
+        }
+
+        internal static bool Pt2IsBetweenPt1AndPt3(IntPoint point1, IntPoint point2, IntPoint point3)
+        {
+            if (point1 == point3 || point1 == point2 || point3 == point2)
+            {
+                return false;
+            }
+
+            if (point1.X != point3.X)
+            {
+                return point2.X > point1.X == point2.X < point3.X;
+            }
+
+            return point2.Y > point1.Y == point2.Y < point3.Y;
         }
 
         public static double GetDx(IntPoint point1, IntPoint point2)

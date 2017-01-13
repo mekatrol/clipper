@@ -1,6 +1,6 @@
 namespace Clipper
 {
-    internal class LocalMinima
+    public class LocalMinima
     {
         internal long Y;
         internal Edge LeftBound;

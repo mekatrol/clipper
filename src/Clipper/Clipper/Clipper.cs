@@ -46,6 +46,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Clipper
 {
@@ -191,16 +192,16 @@ namespace Clipper
                 // Also, consecutive horz. edges may start heading left before going right.
                 start = leftBoundIsForward ? edge.Prev : edge.Next;
 
-                if (start.IsHorizontal) //ie an adjoining horizontal skip edge
+                if (start.IsHorizontal) // An adjoining horizontal skip edge.
                 {
                     if (start.Bottom.X != edge.Bottom.X && start.Top.X != edge.Bottom.X)
                     {
-                        ReverseHorizontal(edge);
+                        edge.ReverseHorizontal();
                     }
                 }
                 else if (start.Bottom.X != edge.Bottom.X)
                 {
-                    ReverseHorizontal(edge);
+                    edge.ReverseHorizontal();
                 }
             }
 
@@ -227,13 +228,13 @@ namespace Clipper
                     edge.NextInLml = edge.Next;
                     if (edge.IsHorizontal && edge != start && edge.Bottom.X != edge.Prev.Top.X)
                     {
-                        ReverseHorizontal(edge);
+                        edge.ReverseHorizontal();
                     }
                     edge = edge.Next;
                 }
                 if (edge.IsHorizontal && edge != start && edge.Bottom.X != edge.Prev.Top.X)
                 {
-                    ReverseHorizontal(edge);
+                    edge.ReverseHorizontal();
                 }
 
                 result = result.Next; //move to the edge just beyond current bound
@@ -255,13 +256,13 @@ namespace Clipper
                     edge.NextInLml = edge.Prev;
                     if (edge.IsHorizontal && edge != start && edge.Bottom.X != edge.Next.Top.X)
                     {
-                        ReverseHorizontal(edge);
+                        edge.ReverseHorizontal();
                     }
                     edge = edge.Prev;
                 }
                 if (edge.IsHorizontal && edge != start && edge.Bottom.X != edge.Next.Top.X)
                 {
-                    ReverseHorizontal(edge);
+                    edge.ReverseHorizontal();
                 }
 
                 result = result.Prev; //move to the edge just beyond current bound
@@ -270,100 +271,85 @@ namespace Clipper
             return result;
         }
 
-        public bool AddPath(Polygon pg, PolygonKind polygonKind, bool closed)
+        public bool AddPath(Polygon polygon, PolygonKind polygonKind)
         {
 #if use_lines
-            if (!closed && polygonKind == PolygonKind.Clip)
+            if (!polygon.IsClosed && polygonKind == PolygonKind.Clip)
                 throw new Exception("AddPath: Open paths must be subject.");
 #else
       if (!Closed)
         throw new ClipperException("AddPath: Open paths have been disabled.");
 #endif
 
-            var highI = pg.Count - 1;
-            if (closed) while (highI > 0 && (pg[highI] == pg[0])) --highI;
-            while (highI > 0 && (pg[highI] == pg[highI - 1])) --highI;
-            if ((closed && highI < 2) || (!closed && highI < 1)) return false;
+            // Step 1 - Remove duplicate vertices and collinear edges.
+            var simplifiedPolygon = polygon.Simplified();
 
-            //create a new edge array ...
-            var edges = new List<Edge>(highI + 1);
-            for (var i = 0; i <= highI; i++) edges.Add(new Edge());
+            // Closed polygons must have at least 3 vertices, and open polygons at least 2.
+            var minVertexCount = simplifiedPolygon.IsClosed ? 3 : 2;
+            if (simplifiedPolygon.Count < minVertexCount) return false;
 
-            var isFlat = true;
+            // Step 2 - Create a new edge array and perform basic initialization.
+            var edges = Enumerable
+                .Range(0, simplifiedPolygon.Count)
+                .Select(i => new Edge
+                {
+                    Current = simplifiedPolygon[i],
+                    OutIndex = ClippingHelper.Unassigned,
+                    Kind = polygonKind
+                })
+                .ToArray();
 
-            //1. Basic (first) edge initialization ...
-            edges[1].Current = pg[1];
-            GeometryHelper.RangeTest(pg[0], ref _useFullRange);
-            GeometryHelper.RangeTest(pg[highI], ref _useFullRange);
-            edges[0].InitializeEdge(edges[1], edges[highI], pg[0]);
-            edges[highI].InitializeEdge(edges[0], edges[highI - 1], pg[highI]);
-            for (var i = highI - 1; i >= 1; --i)
+            var lastIndex = simplifiedPolygon.Count - 1;
+
+            // Step 3 - Initialize polygon boundary edges as well as range test vertex values.
+            GeometryHelper.RangeTest(simplifiedPolygon[0], ref _useFullRange);
+            GeometryHelper.RangeTest(simplifiedPolygon[lastIndex], ref _useFullRange);
+
+            edges[0].SetBoundaryLinks(edges[1], edges[lastIndex]);
+            edges[lastIndex].SetBoundaryLinks(edges[0], edges[lastIndex - 1]);
+
+            for (var i = lastIndex - 1; i >= 1; --i)
             {
-                GeometryHelper.RangeTest(pg[i], ref _useFullRange);
-                edges[i].InitializeEdge(edges[i + 1], edges[i - 1], pg[i]);
+                GeometryHelper.RangeTest(simplifiedPolygon[i], ref _useFullRange);
+                edges[i].SetBoundaryLinks(edges[i + 1], edges[i - 1]);
             }
 
-            Edge eStart = edges[0];
-
-            //2. Remove duplicate vertices, and (when closed) collinear edges ...
-            Edge edge = eStart, eLoopStop = eStart;
-            for (;;)
-            {
-                //nb: allows matching start and end points when not Closed ...
-                if (edge.Current == edge.Next.Current && (closed || edge.Next != eStart))
-                {
-                    if (edge == edge.Next) break;
-                    if (edge == eStart) eStart = edge.Next;
-                    edge = RemoveEdge(edge);
-                    eLoopStop = edge;
-                    continue;
-                }
-                if (edge.Prev == edge.Next)
-                    break; //only two vertices
-                else if (closed && GeometryHelper.SlopesEqual(edge.Prev.Current, edge.Current, edge.Next.Current, _useFullRange) &&
-                  (!PreserveCollinear ||
-                  !Pt2IsBetweenPt1AndPt3(edge.Prev.Current, edge.Current, edge.Next.Current)))
-                {
-                    //Collinear edges are allowed for open paths but in closed paths
-                    //the default is to merge adjacent collinear edges into a single edge.
-                    //However, if the PreserveCollinear property is enabled, only overlapping
-                    //collinear edges (ie spikes) will be removed from closed paths.
-                    if (edge == eStart) eStart = edge.Next;
-                    edge = RemoveEdge(edge);
-                    edge = edge.Prev;
-                    eLoopStop = edge;
-                    continue;
-                }
-                edge = edge.Next;
-                if ((edge == eLoopStop) || (!closed && edge.Next == eStart)) break;
-            }
-
-            if ((!closed && (edge == edge.Next)) || (closed && (edge.Prev == edge.Next)))
-                return false;
-
-            if (!closed)
+            // Step 4 - Initialize open path settings.
+            if (!simplifiedPolygon.IsClosed)
             {
                 _hasOpenPaths = true;
-                eStart.Prev.OutIndex = ClippingHelper.Skip;
+                edges[0].Prev.OutIndex = ClippingHelper.Skip;
             }
 
-            //3. Do second stage of edge initialization ...
-            edge = eStart;
+            // Step 5 - Initialize boundary geometry.
+            var edge = edges[0];
+            var isFlat = true;
             do
             {
-                edge.InitializeEdge(polygonKind);
+                edge.InitializeGeometry();
                 edge = edge.Next;
-                if (isFlat && edge.Current.Y != eStart.Current.Y) isFlat = false;
-            }
-            while (edge != eStart);
 
-            //4. Finally, add edge bounds to LocalMinima list ...
+                if (isFlat && edge.Current.Y != edges[0].Current.Y) isFlat = false;
+            }
+            while (edge != edges[0]);
+
+            // Step 6 - Build LML
+            return BuildLml(simplifiedPolygon, edges, isFlat);
+        }
+
+        private bool BuildLml(Polygon polygon, IEnumerable<Edge> edges, bool isFlat)
+        {
+            var edge = edges.First();
 
             // Totally flat paths must be handled differently when adding them
             // to LocalMinima list to avoid endless loops etc.
             if (isFlat)
             {
-                if (closed) return false;
+                // Closed polygons cannot be flat.
+                if (polygon.IsClosed)
+                {
+                    return false;
+                }
 
                 edge.Prev.OutIndex = ClippingHelper.Skip;
 
@@ -379,33 +365,35 @@ namespace Clipper
 
                 while (true)
                 {
-                    if (edge.Bottom.X != edge.Prev.Top.X) ReverseHorizontal(edge);
-                    if (edge.Next.OutIndex == ClippingHelper.Skip) break;
+                    if (edge.Bottom.X != edge.Prev.Top.X) { edge.ReverseHorizontal(); }
+                    if (edge.Next.OutIndex == ClippingHelper.Skip) { break; }
                     edge.NextInLml = edge.Next;
                     edge = edge.Next;
                 }
 
                 InsertLocalMinima(localMinima);
+
                 return true;
             }
 
             Edge startLocalMinima = null;
 
-            //workaround to avoid an endless loop in the while loop below when
-            //open paths have matching start and end points ...
-            if (edge.Prev.Bottom == edge.Prev.Top) edge = edge.Next;
-
             while (true)
             {
-                // Find next local minima
+                // Find next local minima.
                 edge = FindNextLocalMinima(edge);
 
                 // Back to begining?
-                if (edge == startLocalMinima) break;
+                if (edge == startLocalMinima)
+                {
+                    // Done building local minima.
+                    break;
+                }
 
-                // Record start local minima.
                 if (startLocalMinima == null)
                 {
+                    // Record start local minima so that we know
+                    // when we have iterated all minimas.
                     startLocalMinima = edge;
                 }
 
@@ -433,27 +421,51 @@ namespace Clipper
                 localMinima.LeftBound.Side = EdgeSide.Left;
                 localMinima.RightBound.Side = EdgeSide.Right;
 
-                if (!closed) localMinima.LeftBound.WindDelta = 0;
+                // Initialize winding values
+                if (!polygon.IsClosed)
+                {
+                    localMinima.LeftBound.WindDelta = 0;
+                }
                 else if (localMinima.LeftBound.Next == localMinima.RightBound)
+                {
                     localMinima.LeftBound.WindDelta = -1;
-                else localMinima.LeftBound.WindDelta = 1;
+                }
+                else
+                {
+                    localMinima.LeftBound.WindDelta = 1;
+                }
                 localMinima.RightBound.WindDelta = -localMinima.LeftBound.WindDelta;
 
                 edge = ProcessBound(localMinima.LeftBound, leftBoundIsForward);
-                if (edge.OutIndex == ClippingHelper.Skip) edge = ProcessBound(edge, leftBoundIsForward);
+                if (edge.OutIndex == ClippingHelper.Skip)
+                {
+                    edge = ProcessBound(edge, leftBoundIsForward);
+                }
 
                 var e2 = ProcessBound(localMinima.RightBound, !leftBoundIsForward);
-                if (e2.OutIndex == ClippingHelper.Skip) e2 = ProcessBound(e2, !leftBoundIsForward);
+                if (e2.OutIndex == ClippingHelper.Skip)
+                {
+                    e2 = ProcessBound(e2, !leftBoundIsForward);
+                }
 
                 if (localMinima.LeftBound.OutIndex == ClippingHelper.Skip)
+                {
                     localMinima.LeftBound = null;
+                }
                 else if (localMinima.RightBound.OutIndex == ClippingHelper.Skip)
+                {
                     localMinima.RightBound = null;
-                InsertLocalMinima(localMinima);
-                if (!leftBoundIsForward) edge = e2;
-            }
-            return true;
+                }
 
+                InsertLocalMinima(localMinima);
+
+                if (!leftBoundIsForward)
+                {
+                    edge = e2;
+                }
+            }
+
+            return true;
         }
 
         public bool AddPaths(PolygonPath path, PolygonKind polygonKind)
@@ -461,39 +473,12 @@ namespace Clipper
             var result = false;
             foreach (var polygon in path)
             {
-                if (AddPath(polygon, polygonKind, polygon.IsClosed))
+                if (AddPath(polygon, polygonKind))
                 {
                     result = true;
                 }
             }
             return result;
-        }
-
-        internal bool Pt2IsBetweenPt1AndPt3(IntPoint point1, IntPoint point2, IntPoint point3)
-        {
-            if (point1 == point3 || point1 == point2 || point3 == point2)
-            {
-                return false;
-            }
-
-            if (point1.X != point3.X)
-            {
-                return point2.X > point1.X == point2.X < point3.X;
-            }
-
-            return point2.Y > point1.Y == point2.Y < point3.Y;
-        }
-
-        private static Edge RemoveEdge(Edge edge)
-        {
-            edge.Prev.Next = edge.Next;
-            edge.Next.Prev = edge.Prev;
-
-            var next = edge.Next;
-
-            edge.Prev = null;
-
-            return next;
         }
 
         private void InsertLocalMinima(LocalMinima localMinima)
@@ -537,14 +522,6 @@ namespace Clipper
             return localMinima;
         }
 
-        internal static void ReverseHorizontal(Edge e)
-        {
-            // swap horizontal edges' top and bottom x's so they follow the natural
-            // progression of the bounds - ie so their xbots will align with the
-            // adjoining lower edge. [Helpful in the ProcessHorizontal() method.]
-            GeometryHelper.Swap(ref e.Top.X, ref e.Bottom.X);
-        }
-
         internal virtual void Reset()
         {
             _currentLocalMinima = _minimaList;
@@ -552,6 +529,7 @@ namespace Clipper
 
             // Reset all edges.
             _scanbeam = null;
+
             var localMinima = _minimaList;
             while (localMinima != null)
             {
@@ -688,7 +666,8 @@ namespace Clipper
             return _currentLocalMinima != null;
         }
 
-        internal OutputPolygon CreateOutPolygon()
+
+        internal OutputPolygon CreateOutputPolygon()
         {
             var outputPolygon = new OutputPolygon
             {
@@ -987,12 +966,15 @@ namespace Clipper
             _maxima = null;
 
             long botY;
-            if (!PopScanbeam(out botY)) return false;
+            if (!PopScanbeam(out botY))
+            {
+                return false;
+            }
 
             InsertLocalMinimaIntoAel(botY);
 
             long topY;
-            while (PopScanbeam(out topY) || LocalMinimaPending())
+            while (PopScanbeam(out topY) || _currentLocalMinima != null)
             {
                 ProcessHorizontals();
                 _ghostJoins.Clear();
@@ -1011,7 +993,7 @@ namespace Clipper
             foreach (var outputPolygon in _outputPolygons)
             {
                 if (outputPolygon.Points == null || outputPolygon.IsOpen) continue;
-                if ((outputPolygon.IsHole ^ ReverseSolution) == 
+                if ((outputPolygon.IsHole ^ ReverseSolution) ==
                     (outputPolygon.Orientation == PolygonOrientation.CounterClockwise))
                 {
                     ReverseLinks(outputPolygon.Points);
@@ -1675,7 +1657,7 @@ namespace Clipper
         {
             if (edge.OutIndex < 0)
             {
-                var outputPolygon = CreateOutPolygon();
+                var outputPolygon = CreateOutputPolygon();
                 outputPolygon.IsOpen = edge.WindDelta == 0;
 
                 var points = new OutputPoint
@@ -2588,8 +2570,8 @@ namespace Clipper
 
         internal bool IsMinima(Edge edge)
         {
-            return edge != null && 
-                   edge.Prev.NextInLml != edge && 
+            return edge != null &&
+                   edge.Prev.NextInLml != edge &&
                    edge.Next.NextInLml != edge;
         }
 
@@ -3175,7 +3157,7 @@ namespace Clipper
                 if (polygonPart.Point == polygonPart.Next.Point ||
                     polygonPart.Point == polygonPart.Prev.Point ||
                     GeometryHelper.SlopesEqual(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point, _useFullRange) &&
-                    (!preserveCol || !Pt2IsBetweenPt1AndPt3(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point)))
+                    (!preserveCol || !GeometryHelper.Pt2IsBetweenPt1AndPt3(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point)))
                 {
                     lastOk = null;
                     polygonPart.Prev.Next = polygonPart.Next;
@@ -3811,7 +3793,7 @@ namespace Clipper
                     // splitting one polygon into two.
                     outputPolygon1.Points = j.OutPoint1;
                     outputPolygon1.BottomPoint = null;
-                    outputPolygon2 = CreateOutPolygon();
+                    outputPolygon2 = CreateOutputPolygon();
                     outputPolygon2.Points = j.OutPoint2;
 
                     // update all outputPolygon2.Points Index's ...
@@ -3922,7 +3904,7 @@ namespace Clipper
                             op3.Next = op2;
 
                             outputPolygon1.Points = op;
-                            var outputPolygon2 = CreateOutPolygon();
+                            var outputPolygon2 = CreateOutputPolygon();
                             outputPolygon2.Points = op2;
                             UpdateOutPtIdxs(outputPolygon2);
                             if (Poly2ContainsPoly1(outputPolygon2.Points, outputPolygon1.Points))

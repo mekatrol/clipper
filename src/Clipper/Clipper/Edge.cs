@@ -45,15 +45,13 @@ namespace Clipper
 
         internal bool IsHorizontal { get; private set; }
 
-        internal void InitializeEdge(Edge next, Edge prev, IntPoint point)
+        internal void SetBoundaryLinks(Edge next, Edge prev)
         {
             Next = next;
             Prev = prev;
-            Current = point;
-            OutIndex = ClippingHelper.Unassigned;
         }
 
-        internal void InitializeEdge(PolygonKind kind)
+        internal void InitializeGeometry()
         {
             if (Current.Y >= Next.Current.Y)
             {
@@ -66,7 +64,6 @@ namespace Clipper
                 Bottom = Next.Current;
             }
             SetDx();
-            Kind = kind;
         }
 
         internal void SetDx()
@@ -79,6 +76,14 @@ namespace Clipper
             Dx = IsHorizontal
                 ? ClippingHelper.Horizontal
                 : (double)Delta.X / Delta.Y;
+        }
+
+        internal void ReverseHorizontal()
+        {
+            // swap horizontal edges' top and bottom x's so they follow the natural
+            // progression of the bounds - ie so their xbots will align with the
+            // adjoining lower edge. [Helpful in the ProcessHorizontal() method.]
+            GeometryHelper.Swap(ref Top.X, ref Bottom.X);
         }
     };
 }
