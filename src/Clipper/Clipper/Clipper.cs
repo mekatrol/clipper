@@ -661,12 +661,6 @@ namespace Clipper
             return true;
         }
 
-        internal bool LocalMinimaPending()
-        {
-            return _currentLocalMinima != null;
-        }
-
-
         internal OutputPolygon CreateOutputPolygon()
         {
             var outputPolygon = new OutputPolygon
