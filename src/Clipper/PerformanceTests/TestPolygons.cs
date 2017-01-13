@@ -11,7 +11,9 @@ namespace PerformanceTests
     {
         public static List<ClipExecutionData> LoadPaths(string name)
         {
-            var filename = $"TestData\\{name}";
+            // Move up to solution, then back down to test data as this method
+            // can be called from other projects.
+            var filename = $"..\\..\\..\\PerformanceTests\\TestData\\{name}";
 
             // Decompress ZIP to same directory
             var archive = ZipFile.OpenRead(filename);

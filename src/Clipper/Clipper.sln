@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26020.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clipper", "Clipper\Clipper.csproj", "{9D77FA39-4A49-4560-8B77-B7C901BA8CF4}"
 EndProject
@@ -12,6 +12,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PerformanceTests", "PerformanceTests\PerformanceTests.csproj", "{E8454838-F2DE-4E07-BBB3-325E8575AD6F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Visualizer", "Visualizer\Visualizer.csproj", "{BEC477C6-67F9-46C3-BE24-67CA4AB4919C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsolePerformanceProfiler", "ConsolePerformanceProfiler\ConsolePerformanceProfiler.csproj", "{9638CAF4-87DA-4E31-A669-EB1C731BF1F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{BEC477C6-67F9-46C3-BE24-67CA4AB4919C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BEC477C6-67F9-46C3-BE24-67CA4AB4919C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BEC477C6-67F9-46C3-BE24-67CA4AB4919C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9638CAF4-87DA-4E31-A669-EB1C731BF1F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9638CAF4-87DA-4E31-A669-EB1C731BF1F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9638CAF4-87DA-4E31-A669-EB1C731BF1F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9638CAF4-87DA-4E31-A669-EB1C731BF1F4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

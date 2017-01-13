@@ -2288,7 +2288,9 @@ namespace Clipper
                     }
                 }
                 else
+                {
                     SwapSides(edge1, edge2);
+                }
             }
         }
 

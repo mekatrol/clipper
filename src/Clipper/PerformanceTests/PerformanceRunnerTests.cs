@@ -115,7 +115,7 @@ namespace PerformanceTests
 
         private static void WritePerformanceToFile(string testName, double percentage)
         {
-            const string filename = "..\\..\\TestData\\PerformanceStats.txt";
+            const string filename = "..\\..\\..\\PerformanceTests\\TestData\\PerformanceStats.txt";
             File.AppendAllText(filename, $"{DateTime.Now:dd/MM/yyyy HH:mm} {testName.PadRight(25, ' ')} {percentage * 100.0:000.00}%{Environment.NewLine}");
         }
 
