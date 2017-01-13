@@ -106,13 +106,13 @@ namespace Clipper
             // fixup orientations of all closed paths if the orientation of the
             // closed path with the lowermost vertex is wrong ...
             if (_lowest.X >= 0 &&
-                !Clipper.Orientation(_polygonNodes.Children[(int)_lowest.X].Polygon))
+                _polygonNodes.Children[(int)_lowest.X].Polygon.Orientation == PolygonOrientation.Clockwise)
             {
                 foreach (var node in _polygonNodes.Children)
                 {
                     if (node.EndType == EndType.ClosedPolygon ||
                         node.EndType == EndType.ClosedLine &&
-                        Clipper.Orientation(node.Polygon))
+                        node.Polygon.Orientation == PolygonOrientation.CounterClockwise)
                     {
                         node.Polygon.Reverse();
                     }
@@ -123,7 +123,7 @@ namespace Clipper
                 foreach (var node in _polygonNodes.Children)
                 {
                     if (node.EndType == EndType.ClosedLine &&
-                        !Clipper.Orientation(node.Polygon))
+                        node.Polygon.Orientation == PolygonOrientation.Clockwise)
                     {
                         node.Polygon.Reverse();
                     }

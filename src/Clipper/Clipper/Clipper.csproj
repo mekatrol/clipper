@@ -44,6 +44,7 @@
     <Compile Include="Clipper.cs" />
     <Compile Include="ClipperOffset.cs" />
     <Compile Include="ClippingHelper.cs" />
+    <Compile Include="Containment.cs" />
     <Compile Include="DoublePoint.cs" />
     <Compile Include="Edge.cs" />
     <Compile Include="EdgeDirection.cs" />
@@ -60,6 +61,7 @@
     <Compile Include="JoinType.cs" />
     <Compile Include="LocalMinima.cs" />
     <Compile Include="Maxima.cs" />
+    <Compile Include="MinkowskiHelper.cs" />
     <Compile Include="NodeType.cs" />
     <Compile Include="OutputPoint.cs" />
     <Compile Include="OutputPolygon.cs" />

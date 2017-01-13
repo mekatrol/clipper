@@ -41,6 +41,53 @@ namespace Clipper
         }
 
         /// <summary>
+        /// Computational Geometry (CG) 2nd Edition - Joseph O'Rourke
+        /// Code 7.13 pg 244.
+        /// </summary>
+        public static Containment PolygonContainsPoint(IList<IntPoint> points, IntPoint point)
+        {
+            var rCross = 0;
+            var lCross = 0;
+
+            // Shift so that 'point' is the origin. This destroys the polygon.
+            for (var i = 0; i < points.Count; i++)
+            {
+                points[i] -= point;
+            }
+
+            // For each edge e = (i - 1, i), see if crosses rays.
+            for (var i = 0; i < points.Count; i++)
+            {
+                // (0, 0) is a vertex because we shifted to the origin.
+                if (Math.Abs(points[i].X) < Tolerance && Math.Abs(points[i].Y) < Tolerance)
+                {
+                    return Containment.Vertex;
+                }
+
+                var i1 = (i + points.Count - 1) % points.Count;
+
+                // Check if e straddles x axis, with bias above/below.
+                var rStraddle = points[i].Y > 0 != points[i1].Y > 0;
+                var lStraddle = points[i].Y < 0 != points[i1].Y < 0;
+
+                if (!rStraddle && !lStraddle) continue;
+
+                // Compute intersection of e with x axis.
+                var x = (points[i].X * points[i1].Y - points[i1].X * points[i].Y) /
+                        (points[i1].Y - points[i].Y);
+
+                if (rStraddle && x > 0) { rCross++; }
+                if (lStraddle && x < 0) { lCross++; }
+            }
+
+            // Point on edge if L/Rcross counts are not same parity.
+            if (rCross % 2 != lCross % 2) return Containment.Edge;
+
+            // Point inside iff an odd number of crossings.
+            return rCross % 2 == 1 ? Containment.Interior : Containment.Exterior;
+        }
+
+        /// <summary>
         /// Determine the orientation of the polygon defined by points.
         /// </summary>
         public static PolygonOrientation GetOrientation(IList<DoublePoint> points)
@@ -220,6 +267,56 @@ namespace Clipper
         public static long RoundToLong(this double value)
         {
             return value < 0 ? (long)(value - 0.5) : (long)(value + 0.5);
+        }
+
+        internal static double DistanceFromLineSqrd(IntPoint point, IntPoint linePoint1, IntPoint linePoint2)
+        {
+            //The equation of a line in general form (Ax + By + C = 0)
+            //given 2 points (x¹,y¹) & (x²,y²) is ...
+            //(y¹ - y²)x + (x² - x¹)y + (y² - y¹)x¹ - (x² - x¹)y¹ = 0
+            //A = (y¹ - y²); B = (x² - x¹); C = (y² - y¹)x¹ - (x² - x¹)y¹
+            //perpendicular distance of point (x³,y³) = (Ax³ + By³ + C)/Sqrt(A² + B²)
+            //see http://en.wikipedia.org/wiki/Perpendicular_distance
+            var a = linePoint1.Y - (double)linePoint2.Y;
+            var b = linePoint2.X - (double)linePoint1.X;
+            var c = a * linePoint1.X + b * linePoint1.Y;
+            c = a * point.X + b * point.Y - c;
+            return c * c / (a * a + b * b);
+        }
+
+        internal static bool SlopesNearCollinear(
+            IntPoint point1, IntPoint point2, IntPoint point3, double distanceSquared)
+        {
+            // this function is more accurate when the point that's GEOMETRICALLY 
+            // between the other 2 points is the one that's tested for distance.  
+            // nb: with 'spikes', either point1 or point3 is geometrically between the other pts                    
+            if (Math.Abs(point1.X - point2.X) > Math.Abs(point1.Y - point2.Y))
+            {
+                if (point1.X > point2.X == (point1.X < point3.X))
+                {
+                    return DistanceFromLineSqrd(point1, point2, point3) < distanceSquared;
+                }
+
+                return point2.X > point1.X == point2.X < point3.X
+                    ? DistanceFromLineSqrd(point2, point1, point3) < distanceSquared
+                    : DistanceFromLineSqrd(point3, point1, point2) < distanceSquared;
+            }
+
+            if (point1.Y > point2.Y == point1.Y < point3.Y)
+            {
+                return DistanceFromLineSqrd(point1, point2, point3) < distanceSquared;
+            }
+
+            return point2.Y > point1.Y == point2.Y < point3.Y
+                ? DistanceFromLineSqrd(point2, point1, point3) < distanceSquared
+                : DistanceFromLineSqrd(point3, point1, point2) < distanceSquared;
+        }
+
+        internal static bool PointsAreClose(IntPoint pt1, IntPoint pt2, double distSqrd)
+        {
+            var dx = (double)pt1.X - pt2.X;
+            var dy = (double)pt1.Y - pt2.Y;
+            return dx * dx + dy * dy <= distSqrd;
         }
 
         public static double GetDx(IntPoint point1, IntPoint point2)

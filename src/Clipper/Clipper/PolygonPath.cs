@@ -35,6 +35,13 @@ namespace Clipper
             }
         }
 
+        public PolygonPath Cleaned(double distance = 1.415)
+        {
+            var cleaned = new PolygonPath(Count);
+            cleaned.AddRange(this.Select(polygon => polygon.Cleaned(distance)));
+            return cleaned;
+        }
+
         public static PolygonPath FromTree(PolygonTree tree, NodeType nodeType = NodeType.Any)
         {
             return new PolygonPath(tree.Children.Count) { { tree, nodeType } };

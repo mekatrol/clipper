@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Clipper
 {
@@ -43,6 +45,53 @@ namespace Clipper
         public PolygonNode GetFirst()
         {
             return Children.Count > 0 ? Children[0] : null;
+        }
+
+        public PolygonPath GetPath()
+        {
+            var path = new PolygonPath { Capacity = Children.Count };
+            AddNodeToPath(this, NodeType.Any, path);
+            return path;
+        }
+
+        public PolygonPath GetOpenPath()
+        {
+            var path = new PolygonPath { Capacity = Children.Count };
+            path.AddRange(from node in Children where node.IsOpen select node.Polygon);
+            return path;
+        }
+
+        public PolygonPath GetClosedPath()
+        {
+            var path = new PolygonPath { Capacity = Children.Count };
+            AddNodeToPath(this, NodeType.Closed, path);
+            return path;
+        }
+
+        private static void AddNodeToPath(PolygonNode node, NodeType nodeType, PolygonPath paths)
+        {
+            var match = true;
+
+            switch (nodeType)
+            {
+                case NodeType.Open: return;
+                case NodeType.Closed: match = !node.IsOpen; break;
+                case NodeType.Any:
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(nodeType), nodeType, null);
+            }
+
+            if (node.Polygon.Count > 0 && match)
+            {
+                paths.Add(node.Polygon);
+            }
+
+            foreach (var childNode in node.Children)
+            {
+                AddNodeToPath(childNode, nodeType, paths);
+            }
         }
     }
 }

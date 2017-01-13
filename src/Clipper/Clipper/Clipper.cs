@@ -46,7 +46,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Clipper
 {
@@ -60,7 +59,7 @@ namespace Clipper
         private bool _useFullRange;
         private bool _hasOpenPaths;
 
-        private ClipOperation _mClipOperation;
+        private ClipOperation _clipOperation;
         private Maxima _maxima;
         private Edge _sortedEdges;
         private readonly IntersectionList _intersectList = new IntersectionList();
@@ -919,7 +918,7 @@ namespace Clipper
             solution.Clear();
             _subjFillType = subjFillType;
             _clipFillType = clipFillType;
-            _mClipOperation = clipOperation;
+            _clipOperation = clipOperation;
             _usingTreeSolution = false;
             bool succeeded;
             try
@@ -946,14 +945,14 @@ namespace Clipper
             _executeLocked = true;
             _subjFillType = subjFillType;
             _clipFillType = clipFillType;
-            _mClipOperation = clipOperation;
+            _clipOperation = clipOperation;
             _usingTreeSolution = true;
             bool succeeded;
             try
             {
                 succeeded = ExecuteInternal();
                 //build the return polygons ...
-                if (succeeded) BuildResult2(polytree);
+                if (succeeded) BuildResult(polytree);
             }
             finally
             {
@@ -1008,11 +1007,12 @@ namespace Clipper
                 InsertLocalMinimaIntoAel(botY);
             }
 
-            // fix orientations ...
+            // Fix orientations
             foreach (var outputPolygon in _outputPolygons)
             {
                 if (outputPolygon.Points == null || outputPolygon.IsOpen) continue;
-                if ((outputPolygon.IsHole ^ ReverseSolution) == (Area(outputPolygon) > 0))
+                if ((outputPolygon.IsHole ^ ReverseSolution) == 
+                    (outputPolygon.Orientation == PolygonOrientation.CounterClockwise))
                 {
                     ReverseLinks(outputPolygon.Points);
                 }
@@ -1082,7 +1082,7 @@ namespace Clipper
 
                     if (IsContributing(rightBound))
                     {
-                        outputPoint1 = AddOutPt(rightBound, rightBound.Bottom);
+                        outputPoint1 = AddOutputPoint(rightBound, rightBound.Bottom);
                     }
                 }
                 else if (rightBound == null)
@@ -1092,7 +1092,7 @@ namespace Clipper
 
                     if (IsContributing(leftBound))
                     {
-                        outputPoint1 = AddOutPt(leftBound, leftBound.Bottom);
+                        outputPoint1 = AddOutputPoint(leftBound, leftBound.Bottom);
                     }
 
                     InsertScanbeam(leftBound.Top.Y);
@@ -1149,7 +1149,7 @@ namespace Clipper
                   leftBound.PrevInAel.OutIndex >= 0 && GeometryHelper.SlopesEqual(leftBound.PrevInAel.Current, leftBound.PrevInAel.Top, leftBound.Current, leftBound.Top, _useFullRange) &&
                   leftBound.WindDelta != 0 && leftBound.PrevInAel.WindDelta != 0)
                 {
-                    var outputPoint = AddOutPt(leftBound.PrevInAel, leftBound.Bottom);
+                    var outputPoint = AddOutputPoint(leftBound.PrevInAel, leftBound.Bottom);
                     AddJoin(outputPoint1, outputPoint, leftBound.Top);
                 }
 
@@ -1161,7 +1161,7 @@ namespace Clipper
                 if (rightBound.OutIndex >= 0 && rightBound.PrevInAel.OutIndex >= 0 && GeometryHelper.SlopesEqual(rightBound.PrevInAel.Current, rightBound.PrevInAel.Top, rightBound.Current, rightBound.Top, _useFullRange) &&
                     rightBound.WindDelta != 0 && rightBound.PrevInAel.WindDelta != 0)
                 {
-                    var outputPoint = AddOutPt(rightBound.PrevInAel, rightBound.Bottom);
+                    var outputPoint = AddOutputPoint(rightBound.PrevInAel, rightBound.Bottom);
                     AddJoin(outputPoint1, outputPoint, rightBound.Top);
                 }
 
@@ -1275,7 +1275,7 @@ namespace Clipper
                     break;
             }
 
-            switch (_mClipOperation)
+            switch (_clipOperation)
             {
                 case ClipOperation.Intersection:
                     {
@@ -1353,7 +1353,7 @@ namespace Clipper
         private void SetWindingCount(Edge edge)
         {
             var e = edge.PrevInAel;
-            
+
             //find the edge of the same polytype that immediately preceeds 'edge' in AEL
             while (e != null && (e.Kind != edge.Kind || e.WindDelta == 0))
             {
@@ -1376,7 +1376,7 @@ namespace Clipper
                 edge.WindCount2 = 0;
                 e = _activeEdges; //ie get ready to calc WindCount2
             }
-            else if (edge.WindDelta == 0 && _mClipOperation != ClipOperation.Union)
+            else if (edge.WindDelta == 0 && _clipOperation != ClipOperation.Union)
             {
                 edge.WindCount = 1;
                 edge.WindCount2 = e.WindCount2;
@@ -1512,18 +1512,29 @@ namespace Clipper
         private void SwapPositionsInSel(Edge edge1, Edge edge2)
         {
             if (edge1.NextInSel == null && edge1.PrevInSel == null)
+            {
                 return;
+            }
+
             if (edge2.NextInSel == null && edge2.PrevInSel == null)
+            {
                 return;
+            }
 
             if (edge1.NextInSel == edge2)
             {
-                Edge next = edge2.NextInSel;
+                var next = edge2.NextInSel;
                 if (next != null)
+                {
                     next.PrevInSel = edge1;
-                Edge prev = edge1.PrevInSel;
+                }
+
+                var prev = edge1.PrevInSel;
                 if (prev != null)
+                {
                     prev.NextInSel = edge2;
+                }
+
                 edge2.PrevInSel = prev;
                 edge2.NextInSel = edge1;
                 edge1.PrevInSel = edge2;
@@ -1531,12 +1542,18 @@ namespace Clipper
             }
             else if (edge2.NextInSel == edge1)
             {
-                Edge next = edge1.NextInSel;
+                var next = edge1.NextInSel;
                 if (next != null)
+                {
                     next.PrevInSel = edge2;
-                Edge prev = edge2.PrevInSel;
+                }
+
+                var prev = edge2.PrevInSel;
                 if (prev != null)
+                {
                     prev.NextInSel = edge1;
+                }
+
                 edge1.PrevInSel = prev;
                 edge1.NextInSel = edge2;
                 edge2.PrevInSel = edge1;
@@ -1544,478 +1561,634 @@ namespace Clipper
             }
             else
             {
-                Edge next = edge1.NextInSel;
-                Edge prev = edge1.PrevInSel;
+                var next = edge1.NextInSel;
+                var prev = edge1.PrevInSel;
                 edge1.NextInSel = edge2.NextInSel;
+
                 if (edge1.NextInSel != null)
+                {
                     edge1.NextInSel.PrevInSel = edge1;
+                }
+
                 edge1.PrevInSel = edge2.PrevInSel;
+
                 if (edge1.PrevInSel != null)
+                {
                     edge1.PrevInSel.NextInSel = edge1;
+                }
+
                 edge2.NextInSel = next;
+
                 if (edge2.NextInSel != null)
+                {
                     edge2.NextInSel.PrevInSel = edge2;
+                }
+
                 edge2.PrevInSel = prev;
+
                 if (edge2.PrevInSel != null)
+                {
                     edge2.PrevInSel.NextInSel = edge2;
+                }
             }
 
             if (edge1.PrevInSel == null)
+            {
                 _sortedEdges = edge1;
+            }
             else if (edge2.PrevInSel == null)
+            {
                 _sortedEdges = edge2;
+            }
         }
 
         private void AddLocalMaxPoly(Edge edge1, Edge edge2, IntPoint point)
         {
-            AddOutPt(edge1, point);
-            if (edge2.WindDelta == 0) AddOutPt(edge2, point);
+            AddOutputPoint(edge1, point);
+
+            if (edge2.WindDelta == 0)
+            {
+                AddOutputPoint(edge2, point);
+            }
+
             if (edge1.OutIndex == edge2.OutIndex)
             {
                 edge1.OutIndex = ClippingHelper.Unassigned;
                 edge2.OutIndex = ClippingHelper.Unassigned;
             }
             else if (edge1.OutIndex < edge2.OutIndex)
+            {
                 AppendPolygon(edge1, edge2);
+            }
             else
+            {
                 AppendPolygon(edge2, edge1);
+            }
         }
 
         private OutputPoint AddLocalMinPoly(Edge edge1, Edge edge2, IntPoint point)
         {
             OutputPoint result;
-            Edge e, prevE;
-            if (edge2.IsHorizontal || (edge1.Dx > edge2.Dx))
+            Edge edge, prev;
+
+            if (edge2.IsHorizontal || edge1.Dx > edge2.Dx)
             {
-                result = AddOutPt(edge1, point);
+                result = AddOutputPoint(edge1, point);
                 edge2.OutIndex = edge1.OutIndex;
                 edge1.Side = EdgeSide.Left;
                 edge2.Side = EdgeSide.Right;
-                e = edge1;
-                if (e.PrevInAel == edge2)
-                    prevE = edge2.PrevInAel;
-                else
-                    prevE = e.PrevInAel;
+                edge = edge1;
+                prev = edge.PrevInAel == edge2 ? edge2.PrevInAel : edge.PrevInAel;
             }
             else
             {
-                result = AddOutPt(edge2, point);
+                result = AddOutputPoint(edge2, point);
                 edge1.OutIndex = edge2.OutIndex;
                 edge1.Side = EdgeSide.Right;
                 edge2.Side = EdgeSide.Left;
-                e = edge2;
-                if (e.PrevInAel == edge1)
-                    prevE = edge1.PrevInAel;
-                else
-                    prevE = e.PrevInAel;
+                edge = edge2;
+                prev = edge.PrevInAel == edge1 ? edge1.PrevInAel : edge.PrevInAel;
             }
 
-            if (prevE != null && prevE.OutIndex >= 0)
+            if (prev == null || prev.OutIndex < 0) return result;
+
+            var xPrev = TopX(prev, point.Y);
+            var xEdge = TopX(edge, point.Y);
+
+            if (xPrev != xEdge ||
+                edge.WindDelta == 0 ||
+                prev.WindDelta == 0 ||
+                !GeometryHelper.SlopesEqual(
+                    new IntPoint(xPrev, point.Y), prev.Top, new IntPoint(xEdge, point.Y), edge.Top, _useFullRange))
             {
-                long xPrev = TopX(prevE, point.Y);
-                long xE = TopX(e, point.Y);
-                if ((xPrev == xE) && (e.WindDelta != 0) && (prevE.WindDelta != 0) && GeometryHelper.SlopesEqual(new IntPoint(xPrev, point.Y), prevE.Top, new IntPoint(xE, point.Y), e.Top, _useFullRange))
-                {
-                    OutputPoint outputPoint = AddOutPt(prevE, point);
-                    AddJoin(result, outputPoint, e.Top);
-                }
+                return result;
             }
+
+            var outputPoint = AddOutputPoint(prev, point);
+
+            AddJoin(result, outputPoint, edge.Top);
+
             return result;
         }
 
-        private OutputPoint AddOutPt(Edge edge, IntPoint point)
+        private OutputPoint AddOutputPoint(Edge edge, IntPoint point)
         {
             if (edge.OutIndex < 0)
             {
-                OutputPolygon outputPolygon = CreateOutPolygon();
-                outputPolygon.IsOpen = (edge.WindDelta == 0);
-                OutputPoint newOp = new OutputPoint();
-                outputPolygon.Points = newOp;
-                newOp.Index = outputPolygon.Index;
-                newOp.Point = point;
-                newOp.Next = newOp;
-                newOp.Prev = newOp;
+                var outputPolygon = CreateOutPolygon();
+                outputPolygon.IsOpen = edge.WindDelta == 0;
+
+                var points = new OutputPoint
+                {
+                    Index = outputPolygon.Index,
+                    Point = point
+                };
+
+                points.Next = points;
+                points.Prev = points;
+
+                outputPolygon.Points = points;
+
                 if (!outputPolygon.IsOpen)
+                {
                     SetHoleState(edge, outputPolygon);
+                }
                 edge.OutIndex = outputPolygon.Index; //nb: do this after SetZ !
-                return newOp;
+
+                return points;
             }
             else
             {
-                OutputPolygon outputPolygon = _outputPolygons[edge.OutIndex];
+                var outputPolygon = _outputPolygons[edge.OutIndex];
                 //OutputPolygon.Points is the 'left-most' point & OutputPolygon.Points.Prev is the 'right-most'
-                OutputPoint op = outputPolygon.Points;
-                bool ToFront = (edge.Side == EdgeSide.Left);
-                if (ToFront && point == op.Point) return op;
-                else if (!ToFront && point == op.Prev.Point) return op.Prev;
+                var points = outputPolygon.Points;
 
-                var newOp = new OutputPoint
+                var toFront = edge.Side == EdgeSide.Left;
+
+                if (toFront && point == points.Point)
+                {
+                    return points;
+                }
+
+                if (!toFront && point == points.Prev.Point)
+                {
+                    return points.Prev;
+                }
+
+                var p = new OutputPoint
                 {
                     Index = outputPolygon.Index,
                     Point = point,
-                    Next = op,
-                    Prev = op.Prev
+                    Next = points,
+                    Prev = points.Prev
                 };
-                newOp.Prev.Next = newOp;
-                op.Prev = newOp;
-                if (ToFront) outputPolygon.Points = newOp;
-                return newOp;
+
+                p.Prev.Next = p;
+                points.Prev = p;
+
+                if (toFront)
+                {
+                    outputPolygon.Points = p;
+                }
+
+                return p;
             }
         }
 
-        private OutputPoint GetLastOutPt(Edge edge)
+        private OutputPoint GetLastOutPoint(Edge edge)
         {
-            OutputPolygon outputPolygon = _outputPolygons[edge.OutIndex];
-            if (edge.Side == EdgeSide.Left)
-                return outputPolygon.Points;
-            else
-                return outputPolygon.Points.Prev;
+            var outputPolygon = _outputPolygons[edge.OutIndex];
+            return edge.Side == EdgeSide.Left ? outputPolygon.Points : outputPolygon.Points.Prev;
         }
 
         internal void SwapPoints(ref IntPoint point1, ref IntPoint point2)
         {
-            IntPoint tmp = new IntPoint(point1);
+            var tmp = new IntPoint(point1);
             point1 = point2;
             point2 = tmp;
         }
 
-        private static bool HorzSegmentsOverlap(long seg1a, long seg1b, long seg2a, long seg2b)
+        private static bool HorzSegmentsOverlap(long seg1A, long seg1B, long seg2A, long seg2B)
         {
-            if (seg1a > seg1b) GeometryHelper.Swap(ref seg1a, ref seg1b);
-            if (seg2a > seg2b) GeometryHelper.Swap(ref seg2a, ref seg2b);
-            return (seg1a < seg2b) && (seg2a < seg1b);
+            if (seg1A > seg1B) GeometryHelper.Swap(ref seg1A, ref seg1B);
+            if (seg2A > seg2B) GeometryHelper.Swap(ref seg2A, ref seg2B);
+            return seg1A < seg2B && seg2A < seg1B;
         }
 
         private void SetHoleState(Edge edge, OutputPolygon outputPolygon)
         {
-            Edge e2 = edge.PrevInAel;
-            Edge eTmp = null;
-            while (e2 != null)
+            var edge2 = edge.PrevInAel;
+            Edge tmp = null;
+
+            while (edge2 != null)
             {
-                if (e2.OutIndex >= 0 && e2.WindDelta != 0)
+                if (edge2.OutIndex >= 0 && edge2.WindDelta != 0)
                 {
-                    if (eTmp == null)
-                        eTmp = e2;
-                    else if (eTmp.OutIndex == e2.OutIndex)
-                        eTmp = null; //paired               
+                    if (tmp == null)
+                    {
+                        tmp = edge2;
+                    }
+                    else if (tmp.OutIndex == edge2.OutIndex)
+                    {
+                        tmp = null; //paired               
+                    }
                 }
-                e2 = e2.PrevInAel;
+                edge2 = edge2.PrevInAel;
             }
 
-            if (eTmp == null)
+            if (tmp == null)
             {
                 outputPolygon.FirstLeft = null;
                 outputPolygon.IsHole = false;
             }
             else
             {
-                outputPolygon.FirstLeft = _outputPolygons[eTmp.OutIndex];
+                outputPolygon.FirstLeft = _outputPolygons[tmp.OutIndex];
                 outputPolygon.IsHole = !outputPolygon.FirstLeft.IsHole;
             }
         }
 
-        private bool FirstIsBottomPt(OutputPoint btmPt1, OutputPoint btmPt2)
+        private static bool FirstIsBottomPoint(OutputPoint point1, OutputPoint point2)
         {
-            OutputPoint p = btmPt1.Prev;
-            while ((p.Point == btmPt1.Point) && (p != btmPt1)) p = p.Prev;
-            double dx1p = Math.Abs(GeometryHelper.GetDx(btmPt1.Point, p.Point));
-            p = btmPt1.Next;
-            while ((p.Point == btmPt1.Point) && (p != btmPt1)) p = p.Next;
-            double dx1n = Math.Abs(GeometryHelper.GetDx(btmPt1.Point, p.Point));
+            var p = point1.Prev;
 
-            p = btmPt2.Prev;
-            while ((p.Point == btmPt2.Point) && (p != btmPt2)) p = p.Prev;
-            double dx2p = Math.Abs(GeometryHelper.GetDx(btmPt2.Point, p.Point));
-            p = btmPt2.Next;
-            while ((p.Point == btmPt2.Point) && (p != btmPt2)) p = p.Next;
-            double dx2n = Math.Abs(GeometryHelper.GetDx(btmPt2.Point, p.Point));
+            while (p.Point == point1.Point && p != point1)
+            {
+                p = p.Prev;
+            }
 
-            if (Math.Max(dx1p, dx1n) == Math.Max(dx2p, dx2n) &&
-              Math.Min(dx1p, dx1n) == Math.Min(dx2p, dx2n))
-                return Area(btmPt1) > 0; //if otherwise identical use orientation
-            else
-                return (dx1p >= dx2p && dx1p >= dx2n) || (dx1n >= dx2p && dx1n >= dx2n);
+            var dx1P = Math.Abs(GeometryHelper.GetDx(point1.Point, p.Point));
+
+            p = point1.Next;
+
+            while (p.Point == point1.Point && p != point1)
+            {
+                p = p.Next;
+            }
+
+            var dx1N = Math.Abs(GeometryHelper.GetDx(point1.Point, p.Point));
+
+            p = point2.Prev;
+            while (p.Point == point2.Point && p != point2)
+            {
+                p = p.Prev;
+            }
+
+            var dx2P = Math.Abs(GeometryHelper.GetDx(point2.Point, p.Point));
+
+            p = point2.Next;
+
+            while (p.Point == point2.Point && p != point2)
+            {
+                p = p.Next;
+            }
+
+            var dx2N = Math.Abs(GeometryHelper.GetDx(point2.Point, p.Point));
+
+            return GeometryHelper.NearZero(Math.Max(dx1P, dx1N) - Math.Max(dx2P, dx2N)) &&
+                   GeometryHelper.NearZero(Math.Min(dx1P, dx1N) - Math.Min(dx2P, dx2N))
+                ? point1.Area > 0
+                : dx1P >= dx2P && dx1P >= dx2N || dx1N >= dx2P && dx1N >= dx2N;
         }
 
-        private OutputPoint GetBottomPt(OutputPoint pp)
+        private static OutputPoint GetBottomPoint(OutputPoint polygon)
         {
-            OutputPoint dups = null;
-            OutputPoint p = pp.Next;
-            while (p != pp)
+            OutputPoint duplicate = null;
+            var p = polygon.Next;
+
+            while (p != polygon)
             {
-                if (p.Point.Y > pp.Point.Y)
+                if (p.Point.Y > polygon.Point.Y)
                 {
-                    pp = p;
-                    dups = null;
+                    polygon = p;
+                    duplicate = null;
                 }
-                else if (p.Point.Y == pp.Point.Y && p.Point.X <= pp.Point.X)
+                else if (p.Point.Y == polygon.Point.Y && p.Point.X <= polygon.Point.X)
                 {
-                    if (p.Point.X < pp.Point.X)
+                    if (p.Point.X < polygon.Point.X)
                     {
-                        dups = null;
-                        pp = p;
+                        polygon = p;
+                        duplicate = null;
                     }
                     else
                     {
-                        if (p.Next != pp && p.Prev != pp) dups = p;
+                        if (p.Next != polygon && p.Prev != polygon)
+                        {
+                            duplicate = p;
+                        }
                     }
                 }
                 p = p.Next;
             }
-            if (dups != null)
+
+            if (duplicate == null) return polygon;
+
+            // there appears to be at least 2 vertices at bottom point.
+            while (duplicate != p)
             {
-                //there appears to be at least 2 vertices at bottomPt so ...
-                while (dups != p)
+                if (!FirstIsBottomPoint(p, duplicate))
                 {
-                    if (!FirstIsBottomPt(p, dups)) pp = dups;
-                    dups = dups.Next;
-                    while (dups.Point != pp.Point) dups = dups.Next;
+                    polygon = duplicate;
+                }
+
+                duplicate = duplicate.Next;
+
+                while (duplicate.Point != polygon.Point)
+                {
+                    duplicate = duplicate.Next;
                 }
             }
-            return pp;
+
+            return polygon;
         }
 
-        private OutputPolygon GetLowermostRec(OutputPolygon outPolygon1, OutputPolygon outPolygon2)
+        private static OutputPolygon GetLowermostRec(OutputPolygon outPolygon1, OutputPolygon outPolygon2)
         {
-            //work out which polygon fragment has the correct hole state ...
+            // Work out which polygon fragment has the correct hole state.
             if (outPolygon1.BottomPoint == null)
-                outPolygon1.BottomPoint = GetBottomPt(outPolygon1.Points);
+            {
+                outPolygon1.BottomPoint = GetBottomPoint(outPolygon1.Points);
+            }
+
             if (outPolygon2.BottomPoint == null)
-                outPolygon2.BottomPoint = GetBottomPt(outPolygon2.Points);
-            OutputPoint bPt1 = outPolygon1.BottomPoint;
-            OutputPoint bPt2 = outPolygon2.BottomPoint;
-            if (bPt1.Point.Y > bPt2.Point.Y) return outPolygon1;
-            else if (bPt1.Point.Y < bPt2.Point.Y) return outPolygon2;
-            else if (bPt1.Point.X < bPt2.Point.X) return outPolygon1;
-            else if (bPt1.Point.X > bPt2.Point.X) return outPolygon2;
-            else if (bPt1.Next == bPt1) return outPolygon2;
-            else if (bPt2.Next == bPt2) return outPolygon1;
-            else if (FirstIsBottomPt(bPt1, bPt2)) return outPolygon1;
-            else return outPolygon2;
+            {
+                outPolygon2.BottomPoint = GetBottomPoint(outPolygon2.Points);
+            }
+
+            var point1 = outPolygon1.BottomPoint;
+            var point2 = outPolygon2.BottomPoint;
+
+            if (point1.Point.Y > point2.Point.Y) return outPolygon1;
+            if (point1.Point.Y < point2.Point.Y) return outPolygon2;
+            if (point1.Point.X < point2.Point.X) return outPolygon1;
+            if (point1.Point.X > point2.Point.X) return outPolygon2;
+            if (point1.Next == point1) return outPolygon2;
+            if (point2.Next == point2) return outPolygon1;
+
+            return FirstIsBottomPoint(point1, point2) ? outPolygon1 : outPolygon2;
         }
 
-        private static bool OutRec1RightOfOutRec2(OutputPolygon outPolygon1, OutputPolygon outPolygon2)
+        private static bool OutPolygon1RightOfOutPolygon2(OutputPolygon outPolygon1, OutputPolygon outPolygon2)
         {
             do
             {
                 outPolygon1 = outPolygon1.FirstLeft;
-                if (outPolygon1 == outPolygon2) return true;
+
+                if (outPolygon1 == outPolygon2)
+                {
+                    return true;
+                }
             } while (outPolygon1 != null);
+
             return false;
         }
 
         private OutputPolygon GetOutPolygon(int index)
         {
-            OutputPolygon outrec = _outputPolygons[index];
-            while (outrec != _outputPolygons[outrec.Index])
-                outrec = _outputPolygons[outrec.Index];
-            return outrec;
+            var outPolygon = _outputPolygons[index];
+
+            while (outPolygon != _outputPolygons[outPolygon.Index])
+            {
+                outPolygon = _outputPolygons[outPolygon.Index];
+            }
+
+            return outPolygon;
         }
 
         private void AppendPolygon(Edge edge1, Edge edge2)
         {
-            OutputPolygon outRec1 = _outputPolygons[edge1.OutIndex];
-            OutputPolygon outRec2 = _outputPolygons[edge2.OutIndex];
+            var polygon1 = _outputPolygons[edge1.OutIndex];
+            var polygon2 = _outputPolygons[edge2.OutIndex];
 
-            OutputPolygon holeStateRec;
-            if (OutRec1RightOfOutRec2(outRec1, outRec2))
-                holeStateRec = outRec2;
-            else if (OutRec1RightOfOutRec2(outRec2, outRec1))
-                holeStateRec = outRec1;
+            OutputPolygon hole;
+
+            if (OutPolygon1RightOfOutPolygon2(polygon1, polygon2))
+            {
+                hole = polygon2;
+            }
+            else if (OutPolygon1RightOfOutPolygon2(polygon2, polygon1))
+            {
+                hole = polygon1;
+            }
             else
-                holeStateRec = GetLowermostRec(outRec1, outRec2);
+            {
+                hole = GetLowermostRec(polygon1, polygon2);
+            }
 
-            //get the start and ends of both output polygons and
-            //join E2 poly onto E1 poly and delete pointers to E2 ...
-            OutputPoint p1_lft = outRec1.Points;
-            OutputPoint p1_rt = p1_lft.Prev;
-            OutputPoint p2_lft = outRec2.Points;
-            OutputPoint p2_rt = p2_lft.Prev;
+            // get the start and ends of both output polygons and
+            // join E2 poly onto E1 poly and delete pointers to E2 ...
+            var polygon1Left = polygon1.Points;
+            var polygon1Right = polygon1Left.Prev;
+            var polygon2Left = polygon2.Points;
+            var polygon2Right = polygon2Left.Prev;
 
             //join edge2 poly onto edge1 poly and delete pointers to edge2 ...
             if (edge1.Side == EdgeSide.Left)
             {
                 if (edge2.Side == EdgeSide.Left)
                 {
-                    //z y x a b c
-                    ReverseLinks(p2_lft);
-                    p2_lft.Next = p1_lft;
-                    p1_lft.Prev = p2_lft;
-                    p1_rt.Next = p2_rt;
-                    p2_rt.Prev = p1_rt;
-                    outRec1.Points = p2_rt;
+                    // z y x a b c
+                    ReverseLinks(polygon2Left);
+                    polygon2Left.Next = polygon1Left;
+                    polygon1Left.Prev = polygon2Left;
+                    polygon1Right.Next = polygon2Right;
+                    polygon2Right.Prev = polygon1Right;
+                    polygon1.Points = polygon2Right;
                 }
                 else
                 {
-                    //x y z a b c
-                    p2_rt.Next = p1_lft;
-                    p1_lft.Prev = p2_rt;
-                    p2_lft.Prev = p1_rt;
-                    p1_rt.Next = p2_lft;
-                    outRec1.Points = p2_lft;
+                    // x y z a b c
+                    polygon2Right.Next = polygon1Left;
+                    polygon1Left.Prev = polygon2Right;
+                    polygon2Left.Prev = polygon1Right;
+                    polygon1Right.Next = polygon2Left;
+                    polygon1.Points = polygon2Left;
                 }
             }
             else
             {
                 if (edge2.Side == EdgeSide.Right)
                 {
-                    //a b c z y x
-                    ReverseLinks(p2_lft);
-                    p1_rt.Next = p2_rt;
-                    p2_rt.Prev = p1_rt;
-                    p2_lft.Next = p1_lft;
-                    p1_lft.Prev = p2_lft;
+                    // a b c z y x
+                    ReverseLinks(polygon2Left);
+                    polygon1Right.Next = polygon2Right;
+                    polygon2Right.Prev = polygon1Right;
+                    polygon2Left.Next = polygon1Left;
+                    polygon1Left.Prev = polygon2Left;
                 }
                 else
                 {
-                    //a b c x y z
-                    p1_rt.Next = p2_lft;
-                    p2_lft.Prev = p1_rt;
-                    p1_lft.Prev = p2_rt;
-                    p2_rt.Next = p1_lft;
+                    // a b c x y z
+                    polygon1Right.Next = polygon2Left;
+                    polygon2Left.Prev = polygon1Right;
+                    polygon1Left.Prev = polygon2Right;
+                    polygon2Right.Next = polygon1Left;
                 }
             }
 
-            outRec1.BottomPoint = null;
-            if (holeStateRec == outRec2)
+            polygon1.BottomPoint = null;
+            if (hole == polygon2)
             {
-                if (outRec2.FirstLeft != outRec1)
-                    outRec1.FirstLeft = outRec2.FirstLeft;
-                outRec1.IsHole = outRec2.IsHole;
+                if (polygon2.FirstLeft != polygon1)
+                {
+                    polygon1.FirstLeft = polygon2.FirstLeft;
+                }
+                polygon1.IsHole = polygon2.IsHole;
             }
-            outRec2.Points = null;
-            outRec2.BottomPoint = null;
+            polygon2.Points = null;
+            polygon2.BottomPoint = null;
 
-            outRec2.FirstLeft = outRec1;
+            polygon2.FirstLeft = polygon1;
 
-            int OKIdx = edge1.OutIndex;
-            int ObsoleteIdx = edge2.OutIndex;
+            var okIndex = edge1.OutIndex;
+            var obsoleteIndex = edge2.OutIndex;
 
             edge1.OutIndex = ClippingHelper.Unassigned; //nb: safe because we only get here via AddLocalMaxPoly
             edge2.OutIndex = ClippingHelper.Unassigned;
 
-            Edge e = _activeEdges;
-            while (e != null)
+            var edge = _activeEdges;
+            while (edge != null)
             {
-                if (e.OutIndex == ObsoleteIdx)
+                if (edge.OutIndex == obsoleteIndex)
                 {
-                    e.OutIndex = OKIdx;
-                    e.Side = edge1.Side;
+                    edge.OutIndex = okIndex;
+                    edge.Side = edge1.Side;
                     break;
                 }
-                e = e.NextInAel;
+                edge = edge.NextInAel;
             }
-            outRec2.Index = outRec1.Index;
+            polygon2.Index = polygon1.Index;
         }
 
         private static void ReverseLinks(OutputPoint point)
         {
             if (point == null) return;
-            OutputPoint pp1;
-            OutputPoint pp2;
-            pp1 = point;
+
+            var polygon1 = point;
+
             do
             {
-                pp2 = pp1.Next;
-                pp1.Next = pp1.Prev;
-                pp1.Prev = pp2;
-                pp1 = pp2;
-            } while (pp1 != point);
+                var polygon2 = polygon1.Next;
+                polygon1.Next = polygon1.Prev;
+                polygon1.Prev = polygon2;
+                polygon1 = polygon2;
+            } while (polygon1 != point);
         }
 
         private static void SwapSides(Edge edge1, Edge edge2)
         {
-            EdgeSide side = edge1.Side;
+            var side = edge1.Side;
             edge1.Side = edge2.Side;
             edge2.Side = side;
         }
 
         private static void SwapPolyIndexes(Edge edge1, Edge edge2)
         {
-            int outIdx = edge1.OutIndex;
+            var outIdx = edge1.OutIndex;
             edge1.OutIndex = edge2.OutIndex;
             edge2.OutIndex = outIdx;
         }
 
         private void IntersectEdges(Edge edge1, Edge edge2, IntPoint pt)
         {
-            //edge1 will be to the left of edge2 BELOW the intersection. Therefore edge1 is before
-            //edge2 in AEL except when edge1 is being inserted at the intersection point ...
+            // edge1 will be to the left of edge2 BELOW the intersection. Therefore edge1 is before
+            // edge2 in AEL except when edge1 is being inserted at the intersection point ...
 
-            bool e1Contributing = (edge1.OutIndex >= 0);
-            bool e2Contributing = (edge2.OutIndex >= 0);
+            var e1Contributing = edge1.OutIndex >= 0;
+            var e2Contributing = edge2.OutIndex >= 0;
 
 #if use_lines
-            //if either edge is on an OPEN path ...
+            // if either edge is on an OPEN path ...
             if (edge1.WindDelta == 0 || edge2.WindDelta == 0)
             {
-                //ignore subject-subject open path intersections UNLESS they
-                //are both open paths, AND they are both 'contributing maximas' ...
+                // ignore subject-subject open path intersections UNLESS they
+                // are both open paths, AND they are both 'contributing maximas' ...
                 if (edge1.WindDelta == 0 && edge2.WindDelta == 0) return;
-                //if intersecting a subj line with a subj poly ...
-                else if (edge1.Kind == edge2.Kind &&
-                  edge1.WindDelta != edge2.WindDelta && _mClipOperation == ClipOperation.Union)
+
+                // if intersecting a subj line with a subj poly ...
+                if (edge1.Kind == edge2.Kind &&
+                    edge1.WindDelta != edge2.WindDelta &&
+                    _clipOperation == ClipOperation.Union)
                 {
                     if (edge1.WindDelta == 0)
                     {
-                        if (e2Contributing)
+                        if (!e2Contributing) return;
+
+                        AddOutputPoint(edge1, pt);
+                        if (e1Contributing)
                         {
-                            AddOutPt(edge1, pt);
-                            if (e1Contributing) edge1.OutIndex = ClippingHelper.Unassigned;
+                            edge1.OutIndex = ClippingHelper.Unassigned;
                         }
                     }
                     else
                     {
-                        if (e1Contributing)
+                        if (!e1Contributing) return;
+
+                        AddOutputPoint(edge2, pt);
+                        if (e2Contributing)
                         {
-                            AddOutPt(edge2, pt);
-                            if (e2Contributing) edge2.OutIndex = ClippingHelper.Unassigned;
+                            edge2.OutIndex = ClippingHelper.Unassigned;
                         }
                     }
                 }
                 else if (edge1.Kind != edge2.Kind)
                 {
-                    if ((edge1.WindDelta == 0) && Math.Abs(edge2.WindCount) == 1 &&
-                      (_mClipOperation != ClipOperation.Union || edge2.WindCount2 == 0))
+                    if (edge1.WindDelta == 0 &&
+                        Math.Abs(edge2.WindCount) == 1 &&
+                        (_clipOperation != ClipOperation.Union || edge2.WindCount2 == 0))
                     {
-                        AddOutPt(edge1, pt);
-                        if (e1Contributing) edge1.OutIndex = ClippingHelper.Unassigned;
+                        AddOutputPoint(edge1, pt);
+                        if (e1Contributing)
+                        {
+                            edge1.OutIndex = ClippingHelper.Unassigned;
+                        }
                     }
-                    else if ((edge2.WindDelta == 0) && (Math.Abs(edge1.WindCount) == 1) &&
-                      (_mClipOperation != ClipOperation.Union || edge1.WindCount2 == 0))
+                    else if (edge2.WindDelta == 0 &&
+                             Math.Abs(edge1.WindCount) == 1 &&
+                             (_clipOperation != ClipOperation.Union || edge1.WindCount2 == 0))
                     {
-                        AddOutPt(edge2, pt);
-                        if (e2Contributing) edge2.OutIndex = ClippingHelper.Unassigned;
+                        AddOutputPoint(edge2, pt);
+                        if (e2Contributing)
+                        {
+                            edge2.OutIndex = ClippingHelper.Unassigned;
+                        }
                     }
                 }
+
                 return;
             }
 #endif
 
-            //update winding counts...
-            //assumes that edge1 will be to the right of edge2 ABOVE the intersection
+            // update winding counts...
+            // assumes that edge1 will be to the right of edge2 ABOVE the intersection
             if (edge1.Kind == edge2.Kind)
             {
                 if (IsEvenOddFillType(edge1))
                 {
-                    int oldE1WindCnt = edge1.WindCount;
+                    var tmp = edge1.WindCount;
                     edge1.WindCount = edge2.WindCount;
-                    edge2.WindCount = oldE1WindCnt;
+                    edge2.WindCount = tmp;
                 }
                 else
                 {
-                    if (edge1.WindCount + edge2.WindDelta == 0) edge1.WindCount = -edge1.WindCount;
-                    else edge1.WindCount += edge2.WindDelta;
-                    if (edge2.WindCount - edge1.WindDelta == 0) edge2.WindCount = -edge2.WindCount;
-                    else edge2.WindCount -= edge1.WindDelta;
+                    if (edge1.WindCount + edge2.WindDelta == 0)
+                    {
+                        edge1.WindCount = -edge1.WindCount;
+                    }
+                    else
+                    {
+                        edge1.WindCount += edge2.WindDelta;
+                    }
+
+                    if (edge2.WindCount - edge1.WindDelta == 0)
+                    {
+                        edge2.WindCount = -edge2.WindCount;
+                    }
+                    else
+                    {
+                        edge2.WindCount -= edge1.WindDelta;
+                    }
                 }
             }
             else
             {
-                if (!IsEvenOddFillType(edge2)) edge1.WindCount2 += edge2.WindDelta;
-                else edge1.WindCount2 = (edge1.WindCount2 == 0) ? 1 : 0;
-                if (!IsEvenOddFillType(edge1)) edge2.WindCount2 -= edge1.WindDelta;
-                else edge2.WindCount2 = (edge2.WindCount2 == 0) ? 1 : 0;
+                if (!IsEvenOddFillType(edge2))
+                {
+                    edge1.WindCount2 += edge2.WindDelta;
+                }
+                else
+                {
+                    edge1.WindCount2 = edge1.WindCount2 == 0 ? 1 : 0;
+                }
+
+                if (!IsEvenOddFillType(edge1))
+                {
+                    edge2.WindCount2 -= edge1.WindDelta;
+                }
+                else
+                {
+                    edge2.WindCount2 = edge2.WindCount2 == 0 ? 1 : 0;
+                }
             }
 
             PolygonFillType e1FillType, e2FillType, e1FillType2, e2FillType2;
@@ -2041,12 +2214,14 @@ namespace Clipper
             }
 
             int e1Wc, e2Wc;
+
             switch (e1FillType)
             {
                 case PolygonFillType.Positive: e1Wc = edge1.WindCount; break;
                 case PolygonFillType.Negative: e1Wc = -edge1.WindCount; break;
                 default: e1Wc = Math.Abs(edge1.WindCount); break;
             }
+
             switch (e2FillType)
             {
                 case PolygonFillType.Positive: e2Wc = edge2.WindCount; break;
@@ -2056,48 +2231,50 @@ namespace Clipper
 
             if (e1Contributing && e2Contributing)
             {
-                if ((e1Wc != 0 && e1Wc != 1) || (e2Wc != 0 && e2Wc != 1) ||
-                  (edge1.Kind != edge2.Kind && _mClipOperation != ClipOperation.Xor))
+                if (e1Wc != 0 &&
+                    e1Wc != 1 ||
+                    e2Wc != 0 && e2Wc != 1 ||
+                    edge1.Kind != edge2.Kind &&
+                    _clipOperation != ClipOperation.Xor)
                 {
                     AddLocalMaxPoly(edge1, edge2, pt);
                 }
                 else
                 {
-                    AddOutPt(edge1, pt);
-                    AddOutPt(edge2, pt);
+                    AddOutputPoint(edge1, pt);
+                    AddOutputPoint(edge2, pt);
                     SwapSides(edge1, edge2);
                     SwapPolyIndexes(edge1, edge2);
                 }
             }
             else if (e1Contributing)
             {
-                if (e2Wc == 0 || e2Wc == 1)
-                {
-                    AddOutPt(edge1, pt);
-                    SwapSides(edge1, edge2);
-                    SwapPolyIndexes(edge1, edge2);
-                }
+                if (e2Wc != 0 && e2Wc != 1) return;
 
+                AddOutputPoint(edge1, pt);
+                SwapSides(edge1, edge2);
+                SwapPolyIndexes(edge1, edge2);
             }
             else if (e2Contributing)
             {
-                if (e1Wc == 0 || e1Wc == 1)
-                {
-                    AddOutPt(edge2, pt);
-                    SwapSides(edge1, edge2);
-                    SwapPolyIndexes(edge1, edge2);
-                }
+                if (e1Wc != 0 && e1Wc != 1) return;
+
+                AddOutputPoint(edge2, pt);
+                SwapSides(edge1, edge2);
+                SwapPolyIndexes(edge1, edge2);
             }
             else if ((e1Wc == 0 || e1Wc == 1) && (e2Wc == 0 || e2Wc == 1))
             {
-                //neither edge is currently contributing ...
+                // Neither edge is currently contributing.
                 long e1Wc2, e2Wc2;
+
                 switch (e1FillType2)
                 {
                     case PolygonFillType.Positive: e1Wc2 = edge1.WindCount2; break;
                     case PolygonFillType.Negative: e1Wc2 = -edge1.WindCount2; break;
                     default: e1Wc2 = Math.Abs(edge1.WindCount2); break;
                 }
+
                 switch (e2FillType2)
                 {
                     case PolygonFillType.Positive: e2Wc2 = edge2.WindCount2; break;
@@ -2110,7 +2287,8 @@ namespace Clipper
                     AddLocalMinPoly(edge1, edge2, pt);
                 }
                 else if (e1Wc == 1 && e2Wc == 1)
-                    switch (_mClipOperation)
+                {
+                    switch (_clipOperation)
                     {
                         case ClipOperation.Intersection:
                             if (e1Wc2 > 0 && e2Wc2 > 0)
@@ -2129,6 +2307,7 @@ namespace Clipper
                             AddLocalMinPoly(edge1, edge2, pt);
                             break;
                     }
+                }
                 else
                     SwapSides(edge1, edge2);
             }
@@ -2161,43 +2340,62 @@ namespace Clipper
 
         private void ProcessHorizontal(Edge horzEdge)
         {
-            EdgeDirection dir;
+            EdgeDirection edgeDirection;
             long horzLeft, horzRight;
-            bool IsOpen = horzEdge.WindDelta == 0;
+            var isOpen = horzEdge.WindDelta == 0;
 
-            GetHorzDirection(horzEdge, out dir, out horzLeft, out horzRight);
+            GetHorzDirection(horzEdge, out edgeDirection, out horzLeft, out horzRight);
 
-            Edge eLastHorz = horzEdge, eMaxPair = null;
-            while (eLastHorz.NextInLml != null && eLastHorz.NextInLml.IsHorizontal)
-                eLastHorz = eLastHorz.NextInLml;
-            if (eLastHorz.NextInLml == null)
-                eMaxPair = GetMaximaPair(eLastHorz);
+            var lastHorz = horzEdge;
+            Edge maxPair = null;
 
-            Maxima currMax = _maxima;
+            while (lastHorz.NextInLml != null && lastHorz.NextInLml.IsHorizontal)
+            {
+                lastHorz = lastHorz.NextInLml;
+            }
+
+            if (lastHorz.NextInLml == null)
+            {
+                maxPair = GetMaximaPair(lastHorz);
+            }
+
+            var currMax = _maxima;
             if (currMax != null)
             {
                 //get the first maxima in range (X) ...
-                if (dir == EdgeDirection.LeftToRight)
+                if (edgeDirection == EdgeDirection.LeftToRight)
                 {
                     while (currMax != null && currMax.X <= horzEdge.Bottom.X)
+                    {
                         currMax = currMax.Next;
-                    if (currMax != null && currMax.X >= eLastHorz.Top.X)
+                    }
+
+                    if (currMax != null && currMax.X >= lastHorz.Top.X)
+                    {
                         currMax = null;
+                    }
                 }
                 else
                 {
                     while (currMax.Next != null && currMax.Next.X < horzEdge.Bottom.X)
+                    {
                         currMax = currMax.Next;
-                    if (currMax.X <= eLastHorz.Top.X) currMax = null;
+                    }
+
+                    if (currMax.X <= lastHorz.Top.X)
+                    {
+                        currMax = null;
+                    }
                 }
             }
 
-            OutputPoint op1 = null;
-            for (;;) //loop through consec. horizontal edges
+            OutputPoint point = null;
+            while (true) //loop through consec. horizontal edges
             {
-                bool IsLastHorz = (horzEdge == eLastHorz);
-                Edge e = GetNextInAel(horzEdge, dir);
-                while (e != null)
+                var isLastHorz = horzEdge == lastHorz;
+                var edge = GetNextInAel(horzEdge, edgeDirection);
+
+                while (edge != null)
                 {
 
                     //this code block inserts extra coords into horizontal edges (in output
@@ -2205,137 +2403,180 @@ namespace Clipper
                     //'simplifying' polygons (ie if the Simplify property is set).
                     if (currMax != null)
                     {
-                        if (dir == EdgeDirection.LeftToRight)
+                        if (edgeDirection == EdgeDirection.LeftToRight)
                         {
-                            while (currMax != null && currMax.X < e.Current.X)
+                            while (currMax != null && currMax.X < edge.Current.X)
                             {
-                                if (horzEdge.OutIndex >= 0 && !IsOpen)
-                                    AddOutPt(horzEdge, new IntPoint(currMax.X, horzEdge.Bottom.Y));
+                                if (horzEdge.OutIndex >= 0 && !isOpen)
+                                {
+                                    AddOutputPoint(horzEdge, new IntPoint(currMax.X, horzEdge.Bottom.Y));
+                                }
                                 currMax = currMax.Next;
                             }
                         }
                         else
                         {
-                            while (currMax != null && currMax.X > e.Current.X)
+                            while (currMax != null && currMax.X > edge.Current.X)
                             {
-                                if (horzEdge.OutIndex >= 0 && !IsOpen)
-                                    AddOutPt(horzEdge, new IntPoint(currMax.X, horzEdge.Bottom.Y));
+                                if (horzEdge.OutIndex >= 0 && !isOpen)
+                                {
+                                    AddOutputPoint(horzEdge, new IntPoint(currMax.X, horzEdge.Bottom.Y));
+                                }
                                 currMax = currMax.Prev;
                             }
                         }
-                    };
-
-                    if ((dir == EdgeDirection.LeftToRight && e.Current.X > horzRight) ||
-                      (dir == EdgeDirection.RightToLeft && e.Current.X < horzLeft)) break;
-
-                    //Also break if we've got to the end of an intermediate horizontal edge ...
-                    //nb: Smaller Dx's are to the right of larger Dx's ABOVE the horizontal.
-                    if (e.Current.X == horzEdge.Top.X && horzEdge.NextInLml != null &&
-                      e.Dx < horzEdge.NextInLml.Dx) break;
-
-                    if (horzEdge.OutIndex >= 0 && !IsOpen)  //note: may be done multiple times
-                    {
-                        op1 = AddOutPt(horzEdge, e.Current);
-                        Edge eNextHorz = _sortedEdges;
-                        while (eNextHorz != null)
-                        {
-                            if (eNextHorz.OutIndex >= 0 &&
-                              HorzSegmentsOverlap(horzEdge.Bottom.X,
-                              horzEdge.Top.X, eNextHorz.Bottom.X, eNextHorz.Top.X))
-                            {
-                                OutputPoint op2 = GetLastOutPt(eNextHorz);
-                                AddJoin(op2, op1, eNextHorz.Top);
-                            }
-                            eNextHorz = eNextHorz.NextInSel;
-                        }
-                        AddGhostJoin(op1, horzEdge.Bottom);
                     }
 
-                    //OK, so far we're still in range of the horizontal Edge  but make sure
-                    //we're at the last of consec. horizontals when matching with eMaxPair
-                    if (e == eMaxPair && IsLastHorz)
+                    if (edgeDirection == EdgeDirection.LeftToRight &&
+                        edge.Current.X > horzRight ||
+
+                        edgeDirection == EdgeDirection.RightToLeft &&
+                        edge.Current.X < horzLeft)
+                    {
+                        break;
+                    }
+
+                    // Also break if we've got to the end of an intermediate horizontal edge ...
+                    // nb: Smaller Dx's are to the right of larger Dx's ABOVE the horizontal.
+                    if (edge.Current.X == horzEdge.Top.X &&
+                        horzEdge.NextInLml != null &&
+                        edge.Dx < horzEdge.NextInLml.Dx)
+                    {
+                        break;
+                    }
+
+                    if (horzEdge.OutIndex >= 0 && !isOpen)  //note: may be done multiple times
+                    {
+                        point = AddOutputPoint(horzEdge, edge.Current);
+
+                        var nextHorz = _sortedEdges;
+
+                        while (nextHorz != null)
+                        {
+                            if (nextHorz.OutIndex >= 0 &&
+                              HorzSegmentsOverlap(horzEdge.Bottom.X,
+                              horzEdge.Top.X, nextHorz.Bottom.X, nextHorz.Top.X))
+                            {
+                                var point2 = GetLastOutPoint(nextHorz);
+                                AddJoin(point2, point, nextHorz.Top);
+                            }
+                            nextHorz = nextHorz.NextInSel;
+                        }
+                        AddGhostJoin(point, horzEdge.Bottom);
+                    }
+
+                    // OK, so far we're still in range of the horizontal Edge  but make sure
+                    // we're at the last of consec. horizontals when matching with maxPair
+                    if (edge == maxPair && isLastHorz)
                     {
                         if (horzEdge.OutIndex >= 0)
-                            AddLocalMaxPoly(horzEdge, eMaxPair, horzEdge.Top);
+                        {
+                            AddLocalMaxPoly(horzEdge, maxPair, horzEdge.Top);
+                        }
+
                         DeleteFromAel(horzEdge);
-                        DeleteFromAel(eMaxPair);
+                        DeleteFromAel(maxPair);
+
                         return;
                     }
 
-                    if (dir == EdgeDirection.LeftToRight)
+                    if (edgeDirection == EdgeDirection.LeftToRight)
                     {
-                        IntPoint Pt = new IntPoint(e.Current.X, horzEdge.Current.Y);
-                        IntersectEdges(horzEdge, e, Pt);
+                        IntersectEdges(horzEdge, edge, new IntPoint(edge.Current.X, horzEdge.Current.Y));
                     }
                     else
                     {
-                        IntPoint Pt = new IntPoint(e.Current.X, horzEdge.Current.Y);
-                        IntersectEdges(e, horzEdge, Pt);
+                        IntersectEdges(edge, horzEdge, new IntPoint(edge.Current.X, horzEdge.Current.Y));
                     }
-                    Edge eNext = GetNextInAel(e, dir);
-                    SwapPositionsInAel(horzEdge, e);
-                    e = eNext;
-                } //end while(edge != null)
 
-                //Break out of loop if HorzEdge.NextInLML is not also horizontal ...
-                if (horzEdge.NextInLml == null || !horzEdge.NextInLml.IsHorizontal) break;
+                    var nextInAel = GetNextInAel(edge, edgeDirection);
+                    SwapPositionsInAel(horzEdge, edge);
+                    edge = nextInAel;
+                }
+
+                // Break out of loop if HorzEdge.NextInLML is not also horizontal.
+                if (horzEdge.NextInLml == null || !horzEdge.NextInLml.IsHorizontal)
+                {
+                    break;
+                }
 
                 UpdateEdgeIntoAel(ref horzEdge);
-                if (horzEdge.OutIndex >= 0) AddOutPt(horzEdge, horzEdge.Bottom);
-                GetHorzDirection(horzEdge, out dir, out horzLeft, out horzRight);
 
-            } //end for (;;)
-
-            if (horzEdge.OutIndex >= 0 && op1 == null)
-            {
-                op1 = GetLastOutPt(horzEdge);
-                Edge eNextHorz = _sortedEdges;
-                while (eNextHorz != null)
+                if (horzEdge.OutIndex >= 0)
                 {
-                    if (eNextHorz.OutIndex >= 0 &&
-                      HorzSegmentsOverlap(horzEdge.Bottom.X,
-                      horzEdge.Top.X, eNextHorz.Bottom.X, eNextHorz.Top.X))
-                    {
-                        OutputPoint op2 = GetLastOutPt(eNextHorz);
-                        AddJoin(op2, op1, eNextHorz.Top);
-                    }
-                    eNextHorz = eNextHorz.NextInSel;
+                    AddOutputPoint(horzEdge, horzEdge.Bottom);
                 }
-                AddGhostJoin(op1, horzEdge.Top);
+
+                GetHorzDirection(horzEdge, out edgeDirection, out horzLeft, out horzRight);
+            }
+
+            if (horzEdge.OutIndex >= 0 && point == null)
+            {
+                point = GetLastOutPoint(horzEdge);
+
+                var nextHorz = _sortedEdges;
+
+                while (nextHorz != null)
+                {
+                    if (nextHorz.OutIndex >= 0 &&
+                      HorzSegmentsOverlap(horzEdge.Bottom.X,
+                      horzEdge.Top.X, nextHorz.Bottom.X, nextHorz.Top.X))
+                    {
+                        AddJoin(GetLastOutPoint(nextHorz), point, nextHorz.Top);
+                    }
+                    nextHorz = nextHorz.NextInSel;
+                }
+                AddGhostJoin(point, horzEdge.Top);
             }
 
             if (horzEdge.NextInLml != null)
             {
                 if (horzEdge.OutIndex >= 0)
                 {
-                    op1 = AddOutPt(horzEdge, horzEdge.Top);
+                    point = AddOutputPoint(horzEdge, horzEdge.Top);
 
                     UpdateEdgeIntoAel(ref horzEdge);
-                    if (horzEdge.WindDelta == 0) return;
-                    //nb: HorzEdge is no longer horizontal here
-                    Edge ePrev = horzEdge.PrevInAel;
-                    Edge eNext = horzEdge.NextInAel;
-                    if (ePrev != null && ePrev.Current.X == horzEdge.Bottom.X &&
-                      ePrev.Current.Y == horzEdge.Bottom.Y && ePrev.WindDelta != 0 &&
-                      (ePrev.OutIndex >= 0 && ePrev.Current.Y > ePrev.Top.Y && GeometryHelper.SlopesEqual(horzEdge, ePrev, _useFullRange)))
+                    if (horzEdge.WindDelta == 0)
                     {
-                        OutputPoint op2 = AddOutPt(ePrev, horzEdge.Bottom);
-                        AddJoin(op1, op2, horzEdge.Top);
+                        return;
                     }
-                    else if (eNext != null && eNext.Current.X == horzEdge.Bottom.X &&
-                      eNext.Current.Y == horzEdge.Bottom.Y && eNext.WindDelta != 0 &&
-                      eNext.OutIndex >= 0 && eNext.Current.Y > eNext.Top.Y && GeometryHelper.SlopesEqual(horzEdge, eNext, _useFullRange))
+
+                    // nb: HorzEdge is no longer horizontal here
+                    var prevInAel = horzEdge.PrevInAel;
+                    var nextInAel = horzEdge.NextInAel;
+
+                    if (prevInAel != null &&
+                        prevInAel.Current.X == horzEdge.Bottom.X &&
+                        prevInAel.Current.Y == horzEdge.Bottom.Y &&
+                        prevInAel.WindDelta != 0 &&
+                        prevInAel.OutIndex >= 0 &&
+                        prevInAel.Current.Y > prevInAel.Top.Y &&
+                        GeometryHelper.SlopesEqual(horzEdge, prevInAel, _useFullRange))
                     {
-                        OutputPoint op2 = AddOutPt(eNext, horzEdge.Bottom);
-                        AddJoin(op1, op2, horzEdge.Top);
+                        AddJoin(point, AddOutputPoint(prevInAel, horzEdge.Bottom), horzEdge.Top);
+                    }
+                    else if (nextInAel != null &&
+                             nextInAel.Current.X == horzEdge.Bottom.X &&
+                             nextInAel.Current.Y == horzEdge.Bottom.Y &&
+                             nextInAel.WindDelta != 0 &&
+                             nextInAel.OutIndex >= 0 &&
+                             nextInAel.Current.Y > nextInAel.Top.Y &&
+                             GeometryHelper.SlopesEqual(horzEdge, nextInAel, _useFullRange))
+                    {
+                        AddJoin(point, AddOutputPoint(nextInAel, horzEdge.Bottom), horzEdge.Top);
                     }
                 }
                 else
+                {
                     UpdateEdgeIntoAel(ref horzEdge);
+                }
             }
             else
             {
-                if (horzEdge.OutIndex >= 0) AddOutPt(horzEdge, horzEdge.Top);
+                if (horzEdge.OutIndex >= 0)
+                {
+                    AddOutputPoint(horzEdge, horzEdge.Top);
+                }
                 DeleteFromAel(horzEdge);
             }
         }
@@ -2347,49 +2588,73 @@ namespace Clipper
 
         internal bool IsMinima(Edge edge)
         {
-            return edge != null && (edge.Prev.NextInLml != edge) && (edge.Next.NextInLml != edge);
+            return edge != null && 
+                   edge.Prev.NextInLml != edge && 
+                   edge.Next.NextInLml != edge;
         }
 
-        internal static bool IsMaxima(Edge edge, double y)
+        internal static bool IsMaxima(Edge edge, long y)
         {
-            return (edge != null && edge.Top.Y == y && edge.NextInLml == null);
+            return edge != null && edge.Top.Y == y && edge.NextInLml == null;
         }
 
-        public static bool IsIntermediate(Edge edge, double y)
+        public static bool IsIntermediate(Edge edge, long y)
         {
-            return (edge.Top.Y == y && edge.NextInLml != null);
+            return edge.Top.Y == y && edge.NextInLml != null;
         }
 
         internal Edge GetMaximaPair(Edge edge)
         {
-            if ((edge.Next.Top == edge.Top) && edge.Next.NextInLml == null)
+            if (edge.Next.Top == edge.Top && edge.Next.NextInLml == null)
+            {
                 return edge.Next;
-            else if ((edge.Prev.Top == edge.Top) && edge.Prev.NextInLml == null)
+            }
+
+            if (edge.Prev.Top == edge.Top && edge.Prev.NextInLml == null)
+            {
                 return edge.Prev;
-            else
-                return null;
+            }
+
+            return null;
         }
 
-        internal Edge GetMaximaPairEx(Edge e)
+        internal Edge GetMaximaPairEx(Edge edge)
         {
             //as above but returns null if MaxPair isn't in AEL (unless it's horizontal)
-            Edge result = GetMaximaPair(e);
-            if (result == null || result.OutIndex == ClippingHelper.Skip ||
-              ((result.NextInAel == result.PrevInAel) && !result.IsHorizontal)) return null;
-            return result;
+            var pair = GetMaximaPair(edge);
+            if (pair == null ||
+                pair.OutIndex == ClippingHelper.Skip ||
+                pair.NextInAel == pair.PrevInAel &&
+                !pair.IsHorizontal)
+            {
+                return null;
+            }
+
+            return pair;
         }
 
         private bool ProcessIntersections(long topY)
         {
-            if (_activeEdges == null) return true;
+            if (_activeEdges == null)
+            {
+                return true;
+            }
+
             try
             {
                 BuildIntersectList(topY);
                 if (_intersectList.Count == 0) return true;
                 if (_intersectList.Count == 1 || FixupIntersectionOrder())
+                {
                     ProcessIntersectList();
+                }
                 else
+                {
                     return false;
+                }
+
+                _sortedEdges = null;
+                return true;
             }
             catch
             {
@@ -2397,54 +2662,72 @@ namespace Clipper
                 _intersectList.Clear();
                 throw new Exception("ProcessIntersections error");
             }
-            _sortedEdges = null;
-            return true;
         }
 
         private void BuildIntersectList(long topY)
         {
-            if (_activeEdges == null) return;
-
-            //prepare for sorting ...
-            Edge e = _activeEdges;
-            _sortedEdges = e;
-            while (e != null)
+            if (_activeEdges == null)
             {
-                e.PrevInSel = e.PrevInAel;
-                e.NextInSel = e.NextInAel;
-                e.Current.X = TopX(e, topY);
-                e = e.NextInAel;
+                return;
             }
 
-            //bubblesort ...
-            bool isModified = true;
+            // prepare for sorting ...
+            var edge = _activeEdges;
+            _sortedEdges = edge;
+
+            while (edge != null)
+            {
+                edge.PrevInSel = edge.PrevInAel;
+                edge.NextInSel = edge.NextInAel;
+                edge.Current.X = TopX(edge, topY);
+                edge = edge.NextInAel;
+            }
+
+            // bubblesort ...
+            var isModified = true;
+
             while (isModified && _sortedEdges != null)
             {
                 isModified = false;
-                e = _sortedEdges;
-                while (e.NextInSel != null)
+                edge = _sortedEdges;
+                while (edge.NextInSel != null)
                 {
-                    Edge eNext = e.NextInSel;
-                    IntPoint pt;
-                    if (e.Current.X > eNext.Current.X)
+                    var nextInSel = edge.NextInSel;
+                    if (edge.Current.X > nextInSel.Current.X)
                     {
-                        IntersectPoint(e, eNext, out pt);
-                        if (pt.Y < topY)
-                            pt = new IntPoint(TopX(e, topY), topY);
-                        IntersectNode newNode = new IntersectNode();
-                        newNode.Edge1 = e;
-                        newNode.Edge2 = eNext;
-                        newNode.Point = pt;
-                        _intersectList.Add(newNode);
+                        IntPoint point;
+                        IntersectPoint(edge, nextInSel, out point);
 
-                        SwapPositionsInSel(e, eNext);
+                        if (point.Y < topY)
+                        {
+                            point = new IntPoint(TopX(edge, topY), topY);
+                        }
+
+                        var node = new IntersectNode
+                        {
+                            Edge1 = edge,
+                            Edge2 = nextInSel,
+                            Point = point
+                        };
+
+                        _intersectList.Add(node);
+
+                        SwapPositionsInSel(edge, nextInSel);
                         isModified = true;
                     }
                     else
-                        e = eNext;
+                    {
+                        edge = nextInSel;
+                    }
                 }
-                if (e.PrevInSel != null) e.PrevInSel.NextInSel = null;
-                else break;
+                if (edge.PrevInSel != null)
+                {
+                    edge.PrevInSel.NextInSel = null;
+                }
+                else
+                {
+                    break;
+                }
             }
             _sortedEdges = null;
         }
@@ -2456,63 +2739,72 @@ namespace Clipper
 
         private bool FixupIntersectionOrder()
         {
-            //pre-condition: intersections are sorted bottom-most first.
-            //Now it's crucial that intersections are made only between adjacent edges,
-            //so to ensure this the order of intersections may need adjusting ...
+            // pre-condition: intersections are sorted bottom-most first.
+            // Now it's crucial that intersections are made only between adjacent edges,
+            // so to ensure this the order of intersections may need adjusting ...
             _intersectList.Sort();
 
             CopyAeltoSel();
-            int cnt = _intersectList.Count;
-            for (int i = 0; i < cnt; i++)
+            for (var i = 0; i < _intersectList.Count; i++)
             {
                 if (!EdgesAdjacent(_intersectList[i]))
                 {
-                    int j = i + 1;
-                    while (j < cnt && !EdgesAdjacent(_intersectList[j])) j++;
-                    if (j == cnt) return false;
+                    var j = i + 1;
 
-                    IntersectNode tmp = _intersectList[i];
+                    while (j < _intersectList.Count && !EdgesAdjacent(_intersectList[j]))
+                    {
+                        j++;
+                    }
+
+                    if (j == _intersectList.Count)
+                    {
+                        return false;
+                    }
+
+                    var tmp = _intersectList[i];
                     _intersectList[i] = _intersectList[j];
                     _intersectList[j] = tmp;
 
                 }
+
                 SwapPositionsInSel(_intersectList[i].Edge1, _intersectList[i].Edge2);
             }
+
             return true;
         }
 
         private void ProcessIntersectList()
         {
-            for (int i = 0; i < _intersectList.Count; i++)
+            foreach (var node in _intersectList)
             {
-                IntersectNode iNode = _intersectList[i];
-                {
-                    IntersectEdges(iNode.Edge1, iNode.Edge2, iNode.Point);
-                    SwapPositionsInAel(iNode.Edge1, iNode.Edge2);
-                }
+                IntersectEdges(node.Edge1, node.Edge2, node.Point);
+                SwapPositionsInAel(node.Edge1, node.Edge2);
             }
             _intersectList.Clear();
         }
 
         private static long TopX(Edge edge, long currentY)
         {
-            if (currentY == edge.Top.Y)
-                return edge.Top.X;
-            return edge.Bottom.X + (edge.Dx * (currentY - edge.Bottom.Y)).RoundToLong();
+            return currentY == edge.Top.Y
+                ? edge.Top.X
+                : edge.Bottom.X + (edge.Dx * (currentY - edge.Bottom.Y)).RoundToLong();
         }
 
         private static void IntersectPoint(Edge edge1, Edge edge2, out IntPoint point)
         {
             point = new IntPoint();
-            double b1, b2;
-            //nb: with very large coordinate values, it's possible for SlopesEqual() to 
-            //return false but for the edge.Dx value be equal due to double precision rounding.
-            if (edge1.Dx == edge2.Dx)
+
+            // nb: with very large coordinate values, it's possible for SlopesEqual() to 
+            // return false but for the edge.Dx value be equal due to double precision rounding.
+            if (GeometryHelper.NearZero(edge1.Dx - edge2.Dx))
             {
                 point.Y = edge1.Current.Y;
                 point.X = TopX(edge1, point.Y);
                 return;
             }
+
+            double b1;
+            double b2;
 
             if (edge1.Delta.X == 0)
             {
@@ -2523,8 +2815,8 @@ namespace Clipper
                 }
                 else
                 {
-                    b2 = edge2.Bottom.Y - (edge2.Bottom.X / edge2.Dx);
-                    point.Y = GeometryHelper.RoundToLong(point.X / edge2.Dx + b2);
+                    b2 = edge2.Bottom.Y - edge2.Bottom.X / edge2.Dx;
+                    point.Y = (point.X / edge2.Dx + b2).RoundToLong();
                 }
             }
             else if (edge2.Delta.X == 0)
@@ -2537,160 +2829,173 @@ namespace Clipper
                 else
                 {
                     b1 = edge1.Bottom.Y - (edge1.Bottom.X / edge1.Dx);
-                    point.Y = GeometryHelper.RoundToLong(point.X / edge1.Dx + b1);
+                    point.Y = (point.X / edge1.Dx + b1).RoundToLong();
                 }
             }
             else
             {
                 b1 = edge1.Bottom.X - edge1.Bottom.Y * edge1.Dx;
                 b2 = edge2.Bottom.X - edge2.Bottom.Y * edge2.Dx;
-                double q = (b2 - b1) / (edge1.Dx - edge2.Dx);
-                point.Y = GeometryHelper.RoundToLong(q);
-                if (Math.Abs(edge1.Dx) < Math.Abs(edge2.Dx))
-                    point.X = GeometryHelper.RoundToLong(edge1.Dx * q + b1);
-                else
-                    point.X = GeometryHelper.RoundToLong(edge2.Dx * q + b2);
+                var q = (b2 - b1) / (edge1.Dx - edge2.Dx);
+                point.Y = q.RoundToLong();
+                point.X = Math.Abs(edge1.Dx) < Math.Abs(edge2.Dx)
+                    ? (edge1.Dx * q + b1).RoundToLong()
+                    : (edge2.Dx * q + b2).RoundToLong();
             }
 
             if (point.Y < edge1.Top.Y || point.Y < edge2.Top.Y)
             {
-                if (edge1.Top.Y > edge2.Top.Y)
-                    point.Y = edge1.Top.Y;
-                else
-                    point.Y = edge2.Top.Y;
-                if (Math.Abs(edge1.Dx) < Math.Abs(edge2.Dx))
-                    point.X = TopX(edge1, point.Y);
-                else
-                    point.X = TopX(edge2, point.Y);
+                point.Y = edge1.Top.Y > edge2.Top.Y ? edge1.Top.Y : edge2.Top.Y;
+                point.X = TopX(Math.Abs(edge1.Dx) < Math.Abs(edge2.Dx) ? edge1 : edge2, point.Y);
             }
+
             //finally, don't allow 'point' to be BELOW curr.Y (ie bottom of scanbeam) ...
-            if (point.Y > edge1.Current.Y)
-            {
-                point.Y = edge1.Current.Y;
-                //better to use the more vertical edge to derive X ...
-                if (Math.Abs(edge1.Dx) > Math.Abs(edge2.Dx))
-                    point.X = TopX(edge2, point.Y);
-                else
-                    point.X = TopX(edge1, point.Y);
-            }
+            if (point.Y <= edge1.Current.Y) return;
+
+            point.Y = edge1.Current.Y;
+
+            //better to use the more vertical edge to derive X ...
+            point.X = TopX(Math.Abs(edge1.Dx) > Math.Abs(edge2.Dx) ? edge2 : edge1, point.Y);
         }
 
         private void ProcessEdgesAtTopOfScanbeam(long topY)
         {
-            Edge e = _activeEdges;
-            while (e != null)
+            var edge = _activeEdges;
+            while (edge != null)
             {
-                //1. process maxima, treating them as if they're 'bent' horizontal edges,
-                //   but exclude maxima with horizontal edges. nb: edge can't be a horizontal.
-                var isMaximaEdge = IsMaxima(e, topY);
+                // 1. process maxima, treating them as if they're 'bent' horizontal edges,
+                //    but exclude maxima with horizontal edges. nb: edge can't be a horizontal.
+                var isMaximaEdge = IsMaxima(edge, topY);
 
                 if (isMaximaEdge)
                 {
-                    Edge eMaxPair = GetMaximaPairEx(e);
-                    isMaximaEdge = (eMaxPair == null || !eMaxPair.IsHorizontal);
+                    var maxPair = GetMaximaPairEx(edge);
+                    isMaximaEdge = maxPair == null || !maxPair.IsHorizontal;
                 }
 
                 if (isMaximaEdge)
                 {
-                    if (StrictlySimple) InsertMaxima(e.Top.X);
-                    Edge ePrev = e.PrevInAel;
-                    DoMaxima(e);
-                    e = ePrev == null ? _activeEdges : ePrev.NextInAel;
+                    if (StrictlySimple)
+                    {
+                        InsertMaxima(edge.Top.X);
+                    }
+
+                    var prevInAel = edge.PrevInAel;
+                    DoMaxima(edge);
+                    edge = prevInAel == null ? _activeEdges : prevInAel.NextInAel;
                 }
                 else
                 {
-                    //2. promote horizontal edges, otherwise update Current.X and Current.Y ...
-                    if (IsIntermediate(e, topY) && e.NextInLml.IsHorizontal)
+                    // 2. promote horizontal edges, otherwise update Current.X and Current.Y ...
+                    if (IsIntermediate(edge, topY) && edge.NextInLml.IsHorizontal)
                     {
-                        UpdateEdgeIntoAel(ref e);
-                        if (e.OutIndex >= 0)
+                        UpdateEdgeIntoAel(ref edge);
+                        if (edge.OutIndex >= 0)
                         {
-                            AddOutPt(e, e.Bottom);
+                            AddOutputPoint(edge, edge.Bottom);
                         }
-                        AddEdgeToSel(e);
+                        AddEdgeToSel(edge);
                     }
                     else
                     {
-                        e.Current.X = TopX(e, topY);
-                        e.Current.Y = topY;
+                        edge.Current.X = TopX(edge, topY);
+                        edge.Current.Y = topY;
                     }
 
-                    //When StrictlySimple and 'edge' is being touched by another edge, then
-                    //make sure both edges have a vertex here ...
+                    // When StrictlySimple and 'edge' is being touched by another edge, then
+                    // make sure both edges have a vertex here ...
                     if (StrictlySimple)
                     {
-                        Edge ePrev = e.PrevInAel;
-                        if ((e.OutIndex >= 0) && (e.WindDelta != 0) && ePrev != null &&
-                          (ePrev.OutIndex >= 0) && (ePrev.Current.X == e.Current.X) &&
-                          (ePrev.WindDelta != 0))
+                        var prevInAel = edge.PrevInAel;
+                        if (edge.OutIndex >= 0 &&
+                            edge.WindDelta != 0 &&
+                            prevInAel != null &&
+                            prevInAel.OutIndex >= 0 &&
+                            prevInAel.Current.X == edge.Current.X &&
+                            prevInAel.WindDelta != 0)
                         {
-                            IntPoint ip = new IntPoint(e.Current);
-                            OutputPoint op = AddOutPt(ePrev, ip);
-                            OutputPoint op2 = AddOutPt(e, ip);
-                            AddJoin(op, op2, ip); //StrictlySimple (type-3) join
+                            var point = new IntPoint(edge.Current);
+                            var outputPoint1 = AddOutputPoint(prevInAel, point);
+                            var outputPoint2 = AddOutputPoint(edge, point);
+                            AddJoin(outputPoint1, outputPoint2, point); // StrictlySimple (type-3) join
                         }
                     }
 
-                    e = e.NextInAel;
+                    edge = edge.NextInAel;
                 }
             }
 
-            //3. Process horizontals at the Top of the scanbeam ...
+            // 3. Process horizontals at the Top of the scanbeam ...
             ProcessHorizontals();
             _maxima = null;
 
-            //4. Promote intermediate vertices ...
-            e = _activeEdges;
-            while (e != null)
+            // 4. Promote intermediate vertices ...
+            edge = _activeEdges;
+            while (edge != null)
             {
-                if (IsIntermediate(e, topY))
+                if (IsIntermediate(edge, topY))
                 {
                     OutputPoint op = null;
-                    if (e.OutIndex >= 0)
-                        op = AddOutPt(e, e.Top);
-                    UpdateEdgeIntoAel(ref e);
-
-                    //if output polygons share an edge, they'll need joining later ...
-                    Edge ePrev = e.PrevInAel;
-                    Edge eNext = e.NextInAel;
-                    if (ePrev != null && ePrev.Current.X == e.Bottom.X &&
-                      ePrev.Current.Y == e.Bottom.Y && op != null &&
-                      ePrev.OutIndex >= 0 && ePrev.Current.Y > ePrev.Top.Y && GeometryHelper.SlopesEqual(e.Current, e.Top, ePrev.Current, ePrev.Top, _useFullRange) &&
-                      (e.WindDelta != 0) && (ePrev.WindDelta != 0))
+                    if (edge.OutIndex >= 0)
                     {
-                        OutputPoint op2 = AddOutPt(ePrev, e.Bottom);
-                        AddJoin(op, op2, e.Top);
+                        op = AddOutputPoint(edge, edge.Top);
                     }
-                    else if (eNext != null && eNext.Current.X == e.Bottom.X &&
-                      eNext.Current.Y == e.Bottom.Y && op != null &&
-                      eNext.OutIndex >= 0 && eNext.Current.Y > eNext.Top.Y && GeometryHelper.SlopesEqual(e.Current, e.Top, eNext.Current, eNext.Top, _useFullRange) &&
-                      (e.WindDelta != 0) && (eNext.WindDelta != 0))
+
+                    UpdateEdgeIntoAel(ref edge);
+
+                    // if output polygons share an edge, they'll need joining later ...
+                    var prevInAel = edge.PrevInAel;
+                    var nextInAel = edge.NextInAel;
+
+                    if (prevInAel != null &&
+                        prevInAel.Current.X == edge.Bottom.X &&
+                        prevInAel.Current.Y == edge.Bottom.Y &&
+                        op != null &&
+                        prevInAel.OutIndex >= 0 &&
+                        prevInAel.Current.Y > prevInAel.Top.Y &&
+                        GeometryHelper.SlopesEqual(edge.Current, edge.Top, prevInAel.Current, prevInAel.Top, _useFullRange) &&
+                        edge.WindDelta != 0 && (prevInAel.WindDelta != 0))
                     {
-                        OutputPoint op2 = AddOutPt(eNext, e.Bottom);
-                        AddJoin(op, op2, e.Top);
+                        AddJoin(op, AddOutputPoint(prevInAel, edge.Bottom), edge.Top);
+                    }
+                    else if (nextInAel != null &&
+                             nextInAel.Current.X == edge.Bottom.X &&
+                             nextInAel.Current.Y == edge.Bottom.Y && op != null &&
+                             nextInAel.OutIndex >= 0 &&
+                             nextInAel.Current.Y > nextInAel.Top.Y &&
+                             GeometryHelper.SlopesEqual(edge.Current, edge.Top, nextInAel.Current, nextInAel.Top, _useFullRange) &&
+                             edge.WindDelta != 0 &&
+                             nextInAel.WindDelta != 0)
+                    {
+                        AddJoin(op, AddOutputPoint(nextInAel, edge.Bottom), edge.Top);
                     }
                 }
-                e = e.NextInAel;
+
+                edge = edge.NextInAel;
             }
         }
 
         private void DoMaxima(Edge edge)
         {
-            Edge maxPair = GetMaximaPairEx(edge);
+            var maxPair = GetMaximaPairEx(edge);
+
             if (maxPair == null)
             {
                 if (edge.OutIndex >= 0)
-                    AddOutPt(edge, edge.Top);
+                {
+                    AddOutputPoint(edge, edge.Top);
+                }
+
                 DeleteFromAel(edge);
                 return;
             }
 
-            Edge eNext = edge.NextInAel;
-            while (eNext != null && eNext != maxPair)
+            var nextInAel = edge.NextInAel;
+            while (nextInAel != null && nextInAel != maxPair)
             {
-                IntersectEdges(edge, eNext, edge.Top);
-                SwapPositionsInAel(edge, eNext);
-                eNext = edge.NextInAel;
+                IntersectEdges(edge, nextInAel, edge.Top);
+                SwapPositionsInAel(edge, nextInAel);
+                nextInAel = edge.NextInAel;
             }
 
             if (edge.OutIndex == ClippingHelper.Unassigned && maxPair.OutIndex == ClippingHelper.Unassigned)
@@ -2709,14 +3014,14 @@ namespace Clipper
             {
                 if (edge.OutIndex >= 0)
                 {
-                    AddOutPt(edge, edge.Top);
+                    AddOutputPoint(edge, edge.Top);
                     edge.OutIndex = ClippingHelper.Unassigned;
                 }
                 DeleteFromAel(edge);
 
                 if (maxPair.OutIndex >= 0)
                 {
-                    AddOutPt(maxPair, edge.Top);
+                    AddOutputPoint(maxPair, edge.Top);
                     maxPair.OutIndex = ClippingHelper.Unassigned;
                 }
                 DeleteFromAel(maxPair);
@@ -2728,155 +3033,180 @@ namespace Clipper
             }
         }
 
-        public static void ReversePaths(PolygonPath polys)
+        public static void ReversePaths(PolygonPath path)
         {
-            foreach (var poly in polys) { poly.Reverse(); }
+            foreach (var polygon in path) { polygon.Reverse(); }
         }
 
-        public static bool Orientation(Polygon poly)
+        private static int PointCount(OutputPoint polygon)
         {
-            return Area(poly) >= 0;
-        }
-
-        private int PointCount(OutputPoint pts)
-        {
-            if (pts == null) return 0;
-            int result = 0;
-            OutputPoint p = pts;
+            if (polygon == null) return 0;
+            var result = 0;
+            var p = polygon;
             do
             {
                 result++;
                 p = p.Next;
             }
-            while (p != pts);
+            while (p != polygon);
             return result;
         }
 
-        private void BuildResult(PolygonPath polyg)
+        private void BuildResult(PolygonPath path)
         {
-            polyg.Clear();
-            polyg.Capacity = _outputPolygons.Count;
-            for (int i = 0; i < _outputPolygons.Count; i++)
+            path.Clear();
+            path.Capacity = _outputPolygons.Count;
+            foreach (var outputPolygon in _outputPolygons)
             {
-                OutputPolygon outputPolygon = _outputPolygons[i];
                 if (outputPolygon.Points == null) continue;
-                OutputPoint p = outputPolygon.Points.Prev;
-                int cnt = PointCount(p);
-                if (cnt < 2) continue;
-                Polygon pg = new Polygon(cnt);
-                for (int j = 0; j < cnt; j++)
+                var p = outputPolygon.Points.Prev;
+                var pointCount = PointCount(p);
+                if (pointCount < 2) continue;
+
+                var polygon = new Polygon(pointCount);
+
+                for (var j = 0; j < pointCount; j++)
                 {
-                    pg.Add(p.Point);
+                    polygon.Add(p.Point);
                     p = p.Prev;
                 }
-                polyg.Add(pg);
+                path.Add(polygon);
             }
         }
 
-        private void BuildResult2(PolygonTree polytree)
+        private void BuildResult(PolygonTree tree)
         {
-            polytree.Clear();
+            tree.Clear();
 
-            //add each output polygon/contour to polytree ...
-            polytree.AllPolygons.Capacity = _outputPolygons.Count;
-            for (int i = 0; i < _outputPolygons.Count; i++)
+            //add each output polygon/contour to tree ...
+            tree.AllPolygons.Capacity = _outputPolygons.Count;
+            foreach (var outputPolygon in _outputPolygons)
             {
-                OutputPolygon outputPolygon = _outputPolygons[i];
-                int cnt = PointCount(outputPolygon.Points);
-                if ((outputPolygon.IsOpen && cnt < 2) ||
-                  (!outputPolygon.IsOpen && cnt < 3)) continue;
-                FixHoleLinkage(outputPolygon);
-                PolygonNode pn = new PolygonNode();
-                polytree.AllPolygons.Add(pn);
-                outputPolygon.PolygonNode = pn;
-                pn.Polygon.Capacity = cnt;
-                OutputPoint op = outputPolygon.Points.Prev;
-                for (int j = 0; j < cnt; j++)
+                var pointCount = PointCount(outputPolygon.Points);
+                if (outputPolygon.IsOpen && pointCount < 2 ||
+                    !outputPolygon.IsOpen && pointCount < 3)
                 {
-                    pn.Polygon.Add(op.Point);
-                    op = op.Prev;
+                    continue;
+                }
+
+                FixHoleLinkage(outputPolygon);
+
+                var node = new PolygonNode();
+
+                tree.AllPolygons.Add(node);
+                outputPolygon.PolygonNode = node;
+                node.Polygon.Capacity = pointCount;
+
+                var polygonPart = outputPolygon.Points.Prev;
+                for (var j = 0; j < pointCount; j++)
+                {
+                    node.Polygon.Add(polygonPart.Point);
+                    polygonPart = polygonPart.Prev;
                 }
             }
 
-            //fixup PolygonNode links etc ...
-            polytree.Children.Capacity = _outputPolygons.Count;
-            for (int i = 0; i < _outputPolygons.Count; i++)
+            // fixup PolygonNode links etc ...
+            tree.Children.Capacity = _outputPolygons.Count;
+            foreach (var outputPolygon in _outputPolygons)
             {
-                OutputPolygon outputPolygon = _outputPolygons[i];
                 if (outputPolygon.PolygonNode == null) continue;
-                else if (outputPolygon.IsOpen)
+
+                if (outputPolygon.IsOpen)
                 {
                     outputPolygon.PolygonNode.IsOpen = true;
-                    polytree.AddChild(outputPolygon.PolygonNode);
+                    tree.AddChild(outputPolygon.PolygonNode);
                 }
-                else if (outputPolygon.FirstLeft != null &&
-                  outputPolygon.FirstLeft.PolygonNode != null)
+                else if (outputPolygon.FirstLeft?.PolygonNode != null)
+                {
                     outputPolygon.FirstLeft.PolygonNode.AddChild(outputPolygon.PolygonNode);
+                }
                 else
-                    polytree.AddChild(outputPolygon.PolygonNode);
+                {
+                    tree.AddChild(outputPolygon.PolygonNode);
+                }
             }
         }
 
-        private void FixupOutPolyline(OutputPolygon outrec)
+        private static void FixupOutPolyline(OutputPolygon outPolygon)
         {
-            OutputPoint pp = outrec.Points;
-            OutputPoint lastPP = pp.Prev;
-            while (pp != lastPP)
+            var polygon = outPolygon.Points;
+            var prevPolygon = polygon.Prev;
+
+            while (polygon != prevPolygon)
             {
-                pp = pp.Next;
-                if (pp.Point == pp.Prev.Point)
+                polygon = polygon.Next;
+                if (polygon.Point != polygon.Prev.Point)
                 {
-                    if (pp == lastPP) lastPP = pp.Prev;
-                    OutputPoint tmpPP = pp.Prev;
-                    tmpPP.Next = pp.Next;
-                    pp.Next.Prev = tmpPP;
-                    pp = tmpPP;
+                    continue;
                 }
+
+                if (polygon == prevPolygon) prevPolygon = polygon.Prev;
+
+                var tmp = polygon.Prev;
+
+                tmp.Next = polygon.Next;
+                polygon.Next.Prev = tmp;
+                polygon = tmp;
             }
-            if (pp == pp.Prev) outrec.Points = null;
+
+            if (polygon == polygon.Prev)
+            {
+                outPolygon.Points = null;
+            }
         }
 
         private void FixupOutPolygon(OutputPolygon outputPolygon)
         {
-            //FixupOutPolygon() - removes duplicate points and simplifies consecutive
-            //parallel edges by removing the middle vertex.
-            OutputPoint lastOK = null;
+            // FixupOutPolygon() - removes duplicate points and simplifies consecutive
+            // parallel edges by removing the middle vertex.
+            OutputPoint lastOk = null;
             outputPolygon.BottomPoint = null;
-            OutputPoint pp = outputPolygon.Points;
-            bool preserveCol = PreserveCollinear || StrictlySimple;
-            for (;;)
+            var polygonPart = outputPolygon.Points;
+            var preserveCol = PreserveCollinear || StrictlySimple;
+
+            while (true)
             {
-                if (pp.Prev == pp || pp.Prev == pp.Next)
+                if (polygonPart.Prev == polygonPart || polygonPart.Prev == polygonPart.Next)
                 {
                     outputPolygon.Points = null;
                     return;
                 }
                 //test for duplicate points and collinear edges ...
-                if ((pp.Point == pp.Next.Point) || (pp.Point == pp.Prev.Point) ||
-                  (GeometryHelper.SlopesEqual(pp.Prev.Point, pp.Point, pp.Next.Point, _useFullRange) &&
-                  (!preserveCol || !Pt2IsBetweenPt1AndPt3(pp.Prev.Point, pp.Point, pp.Next.Point))))
+                if (polygonPart.Point == polygonPart.Next.Point ||
+                    polygonPart.Point == polygonPart.Prev.Point ||
+                    GeometryHelper.SlopesEqual(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point, _useFullRange) &&
+                    (!preserveCol || !Pt2IsBetweenPt1AndPt3(polygonPart.Prev.Point, polygonPart.Point, polygonPart.Next.Point)))
                 {
-                    lastOK = null;
-                    pp.Prev.Next = pp.Next;
-                    pp.Next.Prev = pp.Prev;
-                    pp = pp.Prev;
+                    lastOk = null;
+                    polygonPart.Prev.Next = polygonPart.Next;
+                    polygonPart.Next.Prev = polygonPart.Prev;
+                    polygonPart = polygonPart.Prev;
                 }
-                else if (pp == lastOK) break;
+                else if (polygonPart == lastOk)
+                {
+                    break;
+                }
                 else
                 {
-                    if (lastOK == null) lastOK = pp;
-                    pp = pp.Next;
+                    if (lastOk == null)
+                    {
+                        lastOk = polygonPart;
+                    }
+                    polygonPart = polygonPart.Next;
                 }
             }
-            outputPolygon.Points = pp;
+            outputPolygon.Points = polygonPart;
         }
 
-        OutputPoint DupOutPt(OutputPoint outputPoint, bool InsertAfter)
+        private static OutputPoint DuplicateOutputPoint(OutputPoint outputPoint, bool insertAfter)
         {
-            OutputPoint result = new OutputPoint();
-            result.Point = outputPoint.Point;
-            result.Index = outputPoint.Index;
-            if (InsertAfter)
+            var result = new OutputPoint
+            {
+                Point = outputPoint.Point,
+                Index = outputPoint.Index
+            };
+
+            if (insertAfter)
             {
                 result.Next = outputPoint.Next;
                 result.Prev = outputPoint;
@@ -2893,497 +3223,641 @@ namespace Clipper
             return result;
         }
 
-        private bool GetOverlap(long a1, long a2, long b1, long b2, out long left, out long right)
+        private static bool GetOverlap(long a1, long a2, long b1, long b2, out long left, out long right)
         {
             if (a1 < a2)
             {
-                if (b1 < b2) { left = Math.Max(a1, b1); right = Math.Min(a2, b2); }
-                else { left = Math.Max(a1, b2); right = Math.Min(a2, b1); }
+                if (b1 < b2)
+                {
+                    left = Math.Max(a1, b1);
+                    right = Math.Min(a2, b2);
+                }
+                else
+                {
+                    left = Math.Max(a1, b2);
+                    right = Math.Min(a2, b1);
+                }
             }
             else
             {
-                if (b1 < b2) { left = Math.Max(a2, b1); right = Math.Min(a1, b2); }
-                else { left = Math.Max(a2, b2); right = Math.Min(a1, b1); }
+                if (b1 < b2)
+                {
+                    left = Math.Max(a2, b1);
+                    right = Math.Min(a1, b2);
+                }
+                else
+                {
+                    left = Math.Max(a2, b2);
+                    right = Math.Min(a1, b1);
+                }
             }
             return left < right;
         }
 
-        private bool JoinHorz(OutputPoint op1, OutputPoint op1b, OutputPoint op2, OutputPoint op2b,
-          IntPoint point, bool discardLeft)
+        private static bool JoinHorz(
+            OutputPoint op1, OutputPoint op1B,
+            OutputPoint op2, OutputPoint op2B,
+            IntPoint point, bool discardLeft)
         {
-            EdgeDirection Dir1 = (op1.Point.X > op1b.Point.X ?
-              EdgeDirection.RightToLeft : EdgeDirection.LeftToRight);
-            EdgeDirection Dir2 = (op2.Point.X > op2b.Point.X ?
-              EdgeDirection.RightToLeft : EdgeDirection.LeftToRight);
-            if (Dir1 == Dir2) return false;
+            var dir1 = op1.Point.X > op1B.Point.X
+                ? EdgeDirection.RightToLeft
+                : EdgeDirection.LeftToRight;
 
-            //When DiscardLeft, we want Op1b to be on the left of point1, otherwise we
-            //want Op1b to be on the right. (And likewise with point2 and Op2b.)
-            //So, to facilitate this while inserting Op1b and Op2b ...
-            //when DiscardLeft, make sure we're AT or RIGHT of Point before adding Op1b,
-            //otherwise make sure we're AT or LEFT of Point. (Likewise with Op2b.)
-            if (Dir1 == EdgeDirection.LeftToRight)
+            var dir2 = op2.Point.X > op2B.Point.X
+                ? EdgeDirection.RightToLeft
+                : EdgeDirection.LeftToRight;
+
+            if (dir1 == dir2)
+            {
+                return false;
+            }
+
+            // When DiscardLeft, we want Op1b to be on the left of point1, otherwise we
+            // want Op1b to be on the right. (And likewise with point2 and Op2b.)
+            // So, to facilitate this while inserting Op1b and Op2b ...
+            // when DiscardLeft, make sure we're AT or RIGHT of Point before adding Op1b,
+            // otherwise make sure we're AT or LEFT of Point. (Likewise with Op2b.)
+            if (dir1 == EdgeDirection.LeftToRight)
             {
                 while (op1.Next.Point.X <= point.X &&
-                  op1.Next.Point.X >= op1.Point.X && op1.Next.Point.Y == point.Y)
-                    op1 = op1.Next;
-                if (discardLeft && (op1.Point.X != point.X)) op1 = op1.Next;
-                op1b = DupOutPt(op1, !discardLeft);
-                if (op1b.Point != point)
+                       op1.Next.Point.X >= op1.Point.X &&
+                       op1.Next.Point.Y == point.Y)
                 {
-                    op1 = op1b;
+                    op1 = op1.Next;
+                }
+
+                if (discardLeft && op1.Point.X != point.X)
+                {
+                    op1 = op1.Next;
+                }
+
+                op1B = DuplicateOutputPoint(op1, !discardLeft);
+
+                if (op1B.Point != point)
+                {
+                    op1 = op1B;
                     op1.Point = point;
-                    op1b = DupOutPt(op1, !discardLeft);
+                    op1B = DuplicateOutputPoint(op1, !discardLeft);
                 }
             }
             else
             {
                 while (op1.Next.Point.X >= point.X &&
-                  op1.Next.Point.X <= op1.Point.X && op1.Next.Point.Y == point.Y)
-                    op1 = op1.Next;
-                if (!discardLeft && (op1.Point.X != point.X)) op1 = op1.Next;
-                op1b = DupOutPt(op1, discardLeft);
-                if (op1b.Point != point)
+                       op1.Next.Point.X <= op1.Point.X &&
+                       op1.Next.Point.Y == point.Y)
                 {
-                    op1 = op1b;
+                    op1 = op1.Next;
+                }
+
+                if (!discardLeft && op1.Point.X != point.X)
+                {
+                    op1 = op1.Next;
+                }
+
+                op1B = DuplicateOutputPoint(op1, discardLeft);
+
+                if (op1B.Point != point)
+                {
+                    op1 = op1B;
                     op1.Point = point;
-                    op1b = DupOutPt(op1, discardLeft);
+                    op1B = DuplicateOutputPoint(op1, discardLeft);
                 }
             }
 
-            if (Dir2 == EdgeDirection.LeftToRight)
+            if (dir2 == EdgeDirection.LeftToRight)
             {
                 while (op2.Next.Point.X <= point.X &&
-                  op2.Next.Point.X >= op2.Point.X && op2.Next.Point.Y == point.Y)
-                    op2 = op2.Next;
-                if (discardLeft && (op2.Point.X != point.X)) op2 = op2.Next;
-                op2b = DupOutPt(op2, !discardLeft);
-                if (op2b.Point != point)
+                       op2.Next.Point.X >= op2.Point.X &&
+                       op2.Next.Point.Y == point.Y)
                 {
-                    op2 = op2b;
+                    op2 = op2.Next;
+                }
+
+                if (discardLeft && op2.Point.X != point.X)
+                {
+                    op2 = op2.Next;
+                }
+
+                op2B = DuplicateOutputPoint(op2, !discardLeft);
+
+                if (op2B.Point != point)
+                {
+                    op2 = op2B;
                     op2.Point = point;
-                    op2b = DupOutPt(op2, !discardLeft);
-                };
+                    op2B = DuplicateOutputPoint(op2, !discardLeft);
+                }
             }
             else
             {
                 while (op2.Next.Point.X >= point.X &&
-                  op2.Next.Point.X <= op2.Point.X && op2.Next.Point.Y == point.Y)
-                    op2 = op2.Next;
-                if (!discardLeft && (op2.Point.X != point.X)) op2 = op2.Next;
-                op2b = DupOutPt(op2, discardLeft);
-                if (op2b.Point != point)
+                       op2.Next.Point.X <= op2.Point.X &&
+                       op2.Next.Point.Y == point.Y)
                 {
-                    op2 = op2b;
-                    op2.Point = point;
-                    op2b = DupOutPt(op2, discardLeft);
-                };
-            };
+                    op2 = op2.Next;
+                }
 
-            if ((Dir1 == EdgeDirection.LeftToRight) == discardLeft)
+                if (!discardLeft && op2.Point.X != point.X)
+                {
+                    op2 = op2.Next;
+                }
+
+                op2B = DuplicateOutputPoint(op2, discardLeft);
+                if (op2B.Point != point)
+                {
+                    op2 = op2B;
+                    op2.Point = point;
+                    op2B = DuplicateOutputPoint(op2, discardLeft);
+                }
+            }
+
+            if (dir1 == EdgeDirection.LeftToRight == discardLeft)
             {
                 op1.Prev = op2;
                 op2.Next = op1;
-                op1b.Next = op2b;
-                op2b.Prev = op1b;
+                op1B.Next = op2B;
+                op2B.Prev = op1B;
             }
             else
             {
                 op1.Next = op2;
                 op2.Prev = op1;
-                op1b.Prev = op2b;
-                op2b.Next = op1b;
+                op1B.Prev = op2B;
+                op2B.Next = op1B;
             }
             return true;
         }
 
-        private bool JoinPoints(Join j, OutputPolygon outRec1, OutputPolygon outRec2)
+        private bool JoinPoints(Join j, OutputPolygon outputPolygon1, OutputPolygon outputPolygon2)
         {
-            OutputPoint op1 = j.OutPoint1, op1b;
-            OutputPoint op2 = j.OutPoint2, op2b;
+            var op1 = j.OutPoint1;
+            var op2 = j.OutPoint2;
 
-            //There are 3 kinds of joins for output polygons ...
-            //1. Horizontal joins where Join.OutPoint1 & Join.OutPoint2 are vertices anywhere
-            //along (horizontal) collinear edges (& Join.Offset is on the same horizontal).
-            //2. Non-horizontal joins where Join.OutPoint1 & Join.OutPoint2 are at the same
-            //location at the Bottom of the overlapping segment (& Join.Offset is above).
-            //3. StrictlySimple joins where edges touch but are not collinear and where
-            //Join.OutPoint1, Join.OutPoint2 & Join.Offset all share the same point.
-            bool isHorizontal = (j.OutPoint1.Point.Y == j.Offset.Y);
+            OutputPoint op1B;
+            OutputPoint op2B;
 
-            if (isHorizontal && (j.Offset == j.OutPoint1.Point) && (j.Offset == j.OutPoint2.Point))
+            // There are 3 kinds of joins for output polygons ...
+            // 1. Horizontal joins where Join.OutPoint1 & Join.OutPoint2 are vertices anywhere
+            //    along (horizontal) collinear edges (& Join.Offset is on the same horizontal).
+            //
+            // 2. Non-horizontal joins where Join.OutPoint1 & Join.OutPoint2 are at the same
+            //    location at the Bottom of the overlapping segment (& Join.Offset is above).
+            //
+            // 3. StrictlySimple joins where edges touch but are not collinear and where
+            //    Join.OutPoint1, Join.OutPoint2 & Join.Offset all share the same point.
+
+            var isHorizontal = j.OutPoint1.Point.Y == j.Offset.Y;
+
+            bool reverse1;
+            bool reverse2;
+
+            if (isHorizontal && j.Offset == j.OutPoint1.Point && j.Offset == j.OutPoint2.Point)
             {
-                //Strictly Simple join ...
-                if (outRec1 != outRec2) return false;
-                op1b = j.OutPoint1.Next;
-                while (op1b != op1 && (op1b.Point == j.Offset))
-                    op1b = op1b.Next;
-                bool reverse1 = (op1b.Point.Y > j.Offset.Y);
-                op2b = j.OutPoint2.Next;
-                while (op2b != op2 && (op2b.Point == j.Offset))
-                    op2b = op2b.Next;
-                bool reverse2 = (op2b.Point.Y > j.Offset.Y);
-                if (reverse1 == reverse2) return false;
+                // Strictly Simple join ...
+                if (outputPolygon1 != outputPolygon2)
+                {
+                    return false;
+                }
+
+                op1B = j.OutPoint1.Next;
+
+                while (op1B != op1 && (op1B.Point == j.Offset))
+                {
+                    op1B = op1B.Next;
+                }
+
+                reverse1 = op1B.Point.Y > j.Offset.Y;
+
+                op2B = j.OutPoint2.Next;
+
+                while (op2B != op2 && op2B.Point == j.Offset)
+                {
+                    op2B = op2B.Next;
+                }
+
+                reverse2 = op2B.Point.Y > j.Offset.Y;
+
+                if (reverse1 == reverse2)
+                {
+                    return false;
+                }
+
                 if (reverse1)
                 {
-                    op1b = DupOutPt(op1, false);
-                    op2b = DupOutPt(op2, true);
+                    op1B = DuplicateOutputPoint(op1, false);
+                    op2B = DuplicateOutputPoint(op2, true);
                     op1.Prev = op2;
                     op2.Next = op1;
-                    op1b.Next = op2b;
-                    op2b.Prev = op1b;
+                    op1B.Next = op2B;
+                    op2B.Prev = op1B;
                     j.OutPoint1 = op1;
-                    j.OutPoint2 = op1b;
+                    j.OutPoint2 = op1B;
                     return true;
                 }
-                else
-                {
-                    op1b = DupOutPt(op1, true);
-                    op2b = DupOutPt(op2, false);
-                    op1.Next = op2;
-                    op2.Prev = op1;
-                    op1b.Prev = op2b;
-                    op2b.Next = op1b;
-                    j.OutPoint1 = op1;
-                    j.OutPoint2 = op1b;
-                    return true;
-                }
+
+                op1B = DuplicateOutputPoint(op1, true);
+                op2B = DuplicateOutputPoint(op2, false);
+                op1.Next = op2;
+                op2.Prev = op1;
+                op1B.Prev = op2B;
+                op2B.Next = op1B;
+                j.OutPoint1 = op1;
+                j.OutPoint2 = op1B;
+
+                return true;
             }
-            else if (isHorizontal)
+
+            if (isHorizontal)
             {
-                //treat horizontal joins differently to non-horizontal joins since with
-                //them we're not yet sure where the overlapping is. OutPoint1.Point & OutPoint2.Point
-                //may be anywhere along the horizontal edge.
-                op1b = op1;
-                while (op1.Prev.Point.Y == op1.Point.Y && op1.Prev != op1b && op1.Prev != op2)
+                // treat horizontal joins differently to non-horizontal joins since with
+                // them we're not yet sure where the overlapping is. OutPoint1.Point & OutPoint2.Point
+                // may be anywhere along the horizontal edge.
+                op1B = op1;
+                while (op1.Prev.Point.Y == op1.Point.Y && op1.Prev != op1B && op1.Prev != op2)
+                {
                     op1 = op1.Prev;
-                while (op1b.Next.Point.Y == op1b.Point.Y && op1b.Next != op1 && op1b.Next != op2)
-                    op1b = op1b.Next;
-                if (op1b.Next == op1 || op1b.Next == op2) return false; //a flat 'polygon'
+                }
 
-                op2b = op2;
-                while (op2.Prev.Point.Y == op2.Point.Y && op2.Prev != op2b && op2.Prev != op1b)
+                while (op1B.Next.Point.Y == op1B.Point.Y && op1B.Next != op1 && op1B.Next != op2)
+                {
+                    op1B = op1B.Next;
+                }
+
+                if (op1B.Next == op1 || op1B.Next == op2) return false; //a flat 'polygon'
+
+                op2B = op2;
+                while (op2.Prev.Point.Y == op2.Point.Y && op2.Prev != op2B && op2.Prev != op1B)
+                {
                     op2 = op2.Prev;
-                while (op2b.Next.Point.Y == op2b.Point.Y && op2b.Next != op2 && op2b.Next != op1)
-                    op2b = op2b.Next;
-                if (op2b.Next == op2 || op2b.Next == op1) return false; //a flat 'polygon'
+                }
+                while (op2B.Next.Point.Y == op2B.Point.Y && op2B.Next != op2 && op2B.Next != op1)
+                {
+                    op2B = op2B.Next;
+                }
+                if (op2B.Next == op2 || op2B.Next == op1) return false; //a flat 'polygon'
 
-                long Left, Right;
+                long left, right;
                 //point1 -. Op1b & point2 -. Op2b are the extremites of the horizontal edges
-                if (!GetOverlap(op1.Point.X, op1b.Point.X, op2.Point.X, op2b.Point.X, out Left, out Right))
+                if (!GetOverlap(op1.Point.X, op1B.Point.X, op2.Point.X, op2B.Point.X, out left, out right))
+                {
                     return false;
+                }
 
                 //DiscardLeftSide: when overlapping edges are joined, a spike will created
                 //which needs to be cleaned up. However, we don't want point1 or point2 caught up
                 //on the discard Side as either may still be needed for other joins ...
-                IntPoint Pt;
-                bool DiscardLeftSide;
-                if (op1.Point.X >= Left && op1.Point.X <= Right)
+                IntPoint point;
+                bool discardLeftSide;
+                if (op1.Point.X >= left && op1.Point.X <= right)
                 {
-                    Pt = op1.Point; DiscardLeftSide = (op1.Point.X > op1b.Point.X);
+                    point = op1.Point; discardLeftSide = op1.Point.X > op1B.Point.X;
                 }
-                else if (op2.Point.X >= Left && op2.Point.X <= Right)
+                else if (op2.Point.X >= left && op2.Point.X <= right)
                 {
-                    Pt = op2.Point; DiscardLeftSide = (op2.Point.X > op2b.Point.X);
+                    point = op2.Point; discardLeftSide = op2.Point.X > op2B.Point.X;
                 }
-                else if (op1b.Point.X >= Left && op1b.Point.X <= Right)
+                else if (op1B.Point.X >= left && op1B.Point.X <= right)
                 {
-                    Pt = op1b.Point; DiscardLeftSide = op1b.Point.X > op1.Point.X;
+                    point = op1B.Point; discardLeftSide = op1B.Point.X > op1.Point.X;
                 }
                 else
                 {
-                    Pt = op2b.Point; DiscardLeftSide = (op2b.Point.X > op2.Point.X);
+                    point = op2B.Point; discardLeftSide = op2B.Point.X > op2.Point.X;
                 }
+
                 j.OutPoint1 = op1;
                 j.OutPoint2 = op2;
-                return JoinHorz(op1, op1b, op2, op2b, Pt, DiscardLeftSide);
+
+                return JoinHorz(op1, op1B, op2, op2B, point, discardLeftSide);
             }
-            else
+            // nb: For non-horizontal joins ...
+            //    1. Jr.OutPoint1.Point.Y == Jr.OutPoint2.Point.Y
+            //    2. Jr.OutPoint1.Point > Jr.Offset.Y
+
+            // make sure the polygons are correctly oriented ...
+            op1B = op1.Next;
+            while (op1B.Point == op1.Point && op1B != op1)
             {
-                //nb: For non-horizontal joins ...
-                //    1. Jr.OutPoint1.Point.Y == Jr.OutPoint2.Point.Y
-                //    2. Jr.OutPoint1.Point > Jr.Offset.Y
+                op1B = op1B.Next;
+            }
 
-                //make sure the polygons are correctly oriented ...
-                op1b = op1.Next;
-                while ((op1b.Point == op1.Point) && (op1b != op1)) op1b = op1b.Next;
-                bool Reverse1 = ((op1b.Point.Y > op1.Point.Y) ||
-                  !GeometryHelper.SlopesEqual(op1.Point, op1b.Point, j.Offset, _useFullRange));
-                if (Reverse1)
+            reverse1 = op1B.Point.Y > op1.Point.Y ||
+                           !GeometryHelper.SlopesEqual(op1.Point, op1B.Point, j.Offset, _useFullRange);
+
+            if (reverse1)
+            {
+                op1B = op1.Prev;
+                while (op1B.Point == op1.Point && op1B != op1)
                 {
-                    op1b = op1.Prev;
-                    while ((op1b.Point == op1.Point) && (op1b != op1)) op1b = op1b.Prev;
-                    if ((op1b.Point.Y > op1.Point.Y) ||
-                      !GeometryHelper.SlopesEqual(op1.Point, op1b.Point, j.Offset, _useFullRange)) return false;
-                };
-                op2b = op2.Next;
-                while ((op2b.Point == op2.Point) && (op2b != op2)) op2b = op2b.Next;
-                bool Reverse2 = ((op2b.Point.Y > op2.Point.Y) ||
-                  !GeometryHelper.SlopesEqual(op2.Point, op2b.Point, j.Offset, _useFullRange));
-                if (Reverse2)
-                {
-                    op2b = op2.Prev;
-                    while ((op2b.Point == op2.Point) && (op2b != op2)) op2b = op2b.Prev;
-                    if ((op2b.Point.Y > op2.Point.Y) ||
-                      !GeometryHelper.SlopesEqual(op2.Point, op2b.Point, j.Offset, _useFullRange)) return false;
+                    op1B = op1B.Prev;
                 }
 
-                if ((op1b == op1) || (op2b == op2) || (op1b == op2b) ||
-                  ((outRec1 == outRec2) && (Reverse1 == Reverse2))) return false;
-
-                if (Reverse1)
+                if (op1B.Point.Y > op1.Point.Y ||
+                    !GeometryHelper.SlopesEqual(op1.Point, op1B.Point, j.Offset, _useFullRange))
                 {
-                    op1b = DupOutPt(op1, false);
-                    op2b = DupOutPt(op2, true);
-                    op1.Prev = op2;
-                    op2.Next = op1;
-                    op1b.Next = op2b;
-                    op2b.Prev = op1b;
-                    j.OutPoint1 = op1;
-                    j.OutPoint2 = op1b;
-                    return true;
-                }
-                else
-                {
-                    op1b = DupOutPt(op1, true);
-                    op2b = DupOutPt(op2, false);
-                    op1.Next = op2;
-                    op2.Prev = op1;
-                    op1b.Prev = op2b;
-                    op2b.Next = op1b;
-                    j.OutPoint1 = op1;
-                    j.OutPoint2 = op1b;
-                    return true;
+                    return false;
                 }
             }
+
+            op2B = op2.Next;
+            while ((op2B.Point == op2.Point) && (op2B != op2)) op2B = op2B.Next;
+
+            reverse2 = op2B.Point.Y > op2.Point.Y ||
+                           !GeometryHelper.SlopesEqual(op2.Point, op2B.Point, j.Offset, _useFullRange);
+
+            if (reverse2)
+            {
+                op2B = op2.Prev;
+
+                while (op2B.Point == op2.Point && op2B != op2)
+                {
+                    op2B = op2B.Prev;
+                }
+
+                if (op2B.Point.Y > op2.Point.Y ||
+                    !GeometryHelper.SlopesEqual(op2.Point, op2B.Point, j.Offset, _useFullRange))
+                {
+                    return false;
+                }
+            }
+
+            if (op1B == op1 || op2B == op2 || op1B == op2B ||
+                outputPolygon1 == outputPolygon2 && reverse1 == reverse2)
+            {
+                return false;
+            }
+
+            if (reverse1)
+            {
+                op1B = DuplicateOutputPoint(op1, false);
+                op2B = DuplicateOutputPoint(op2, true);
+                op1.Prev = op2;
+                op2.Next = op1;
+                op1B.Next = op2B;
+                op2B.Prev = op1B;
+                j.OutPoint1 = op1;
+                j.OutPoint2 = op1B;
+                return true;
+            }
+
+            op1B = DuplicateOutputPoint(op1, true);
+            op2B = DuplicateOutputPoint(op2, false);
+            op1.Next = op2;
+            op2.Prev = op1;
+            op1B.Prev = op2B;
+            op2B.Next = op1B;
+            j.OutPoint1 = op1;
+            j.OutPoint2 = op1B;
+            return true;
         }
 
-        public static int PointInPolygon(IntPoint pt, Polygon path)
+        private static int PointInPolygon(IntPoint point, OutputPoint op)
         {
-            //returns 0 if false, +1 if true, -1 if point ON polygon boundary
-            //See "The Point in Polygon Problem for Arbitrary Polygons" by Hormann & Agathos
-            //http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.88.5498&rep=rep1&type=pdf
-            int result = 0, cnt = path.Count;
-            if (cnt < 3) return 0;
-            IntPoint ip = path[0];
-            for (int i = 1; i <= cnt; ++i)
-            {
-                IntPoint ipNext = (i == cnt ? path[0] : path[i]);
-                if (ipNext.Y == pt.Y)
-                {
-                    if ((ipNext.X == pt.X) || (ip.Y == pt.Y &&
-                      ((ipNext.X > pt.X) == (ip.X < pt.X)))) return -1;
-                }
-                if ((ip.Y < pt.Y) != (ipNext.Y < pt.Y))
-                {
-                    if (ip.X >= pt.X)
-                    {
-                        if (ipNext.X > pt.X) result = 1 - result;
-                        else
-                        {
-                            double d = (double)(ip.X - pt.X) * (ipNext.Y - pt.Y) -
-                              (double)(ipNext.X - pt.X) * (ip.Y - pt.Y);
-                            if (d == 0) return -1;
-                            else if ((d > 0) == (ipNext.Y > ip.Y)) result = 1 - result;
-                        }
-                    }
-                    else
-                    {
-                        if (ipNext.X > pt.X)
-                        {
-                            double d = (double)(ip.X - pt.X) * (ipNext.Y - pt.Y) -
-                              (double)(ipNext.X - pt.X) * (ip.Y - pt.Y);
-                            if (d == 0) return -1;
-                            else if ((d > 0) == (ipNext.Y > ip.Y)) result = 1 - result;
-                        }
-                    }
-                }
-                ip = ipNext;
-            }
-            return result;
-        }
-
-        private static int PointInPolygon(IntPoint pt, OutputPoint op)
-        {
-            //returns 0 if false, +1 if true, -1 if point ON polygon boundary
-            int result = 0;
-            OutputPoint startOp = op;
-            long ptx = pt.X, pty = pt.Y;
-            long poly0x = op.Point.X, poly0y = op.Point.Y;
+            // returns 0 if false, +1 if true, -1 if point ON polygon boundary
+            var result = 0;
+            var startOp = op;
+            var ptx = point.X;
+            var pty = point.Y;
+            var poly0X = op.Point.X;
+            var poly0Y = op.Point.Y;
             do
             {
                 op = op.Next;
-                long poly1x = op.Point.X, poly1y = op.Point.Y;
+                var poly1X = op.Point.X;
+                var poly1Y = op.Point.Y;
 
-                if (poly1y == pty)
+                if (poly1Y == pty)
                 {
-                    if ((poly1x == ptx) || (poly0y == pty &&
-                      ((poly1x > ptx) == (poly0x < ptx)))) return -1;
-                }
-                if ((poly0y < pty) != (poly1y < pty))
-                {
-                    if (poly0x >= ptx)
+                    if (poly1X == ptx || poly0Y == pty &&
+                        poly1X > ptx == poly0X < ptx)
                     {
-                        if (poly1x > ptx) result = 1 - result;
+                        return -1;
+                    }
+                }
+
+                if (poly0Y < pty != poly1Y < pty)
+                {
+                    if (poly0X >= ptx)
+                    {
+                        if (poly1X > ptx)
+                        {
+                            result = 1 - result;
+                        }
                         else
                         {
-                            double d = (double)(poly0x - ptx) * (poly1y - pty) -
-                              (double)(poly1x - ptx) * (poly0y - pty);
-                            if (d == 0) return -1;
-                            if ((d > 0) == (poly1y > poly0y)) result = 1 - result;
+                            var d = (double)(poly0X - ptx) * (poly1Y - pty) -
+                                    (double)(poly1X - ptx) * (poly0Y - pty);
+
+                            if (GeometryHelper.NearZero(d))
+                            {
+                                return -1;
+                            }
+
+                            if (d > 0 == poly1Y > poly0Y)
+                            {
+                                result = 1 - result;
+                            }
                         }
                     }
                     else
                     {
-                        if (poly1x > ptx)
+                        if (poly1X > ptx)
                         {
-                            double d = (double)(poly0x - ptx) * (poly1y - pty) -
-                              (double)(poly1x - ptx) * (poly0y - pty);
-                            if (d == 0) return -1;
-                            if ((d > 0) == (poly1y > poly0y)) result = 1 - result;
+                            var d = (double)(poly0X - ptx) * (poly1Y - pty) -
+                                    (double)(poly1X - ptx) * (poly0Y - pty);
+
+                            if (GeometryHelper.NearZero(d))
+                            {
+                                return -1;
+                            }
+
+                            if (d > 0 == poly1Y > poly0Y)
+                            {
+                                result = 1 - result;
+                            }
                         }
                     }
                 }
-                poly0x = poly1x; poly0y = poly1y;
+
+                poly0X = poly1X;
+                poly0Y = poly1Y;
+
             } while (startOp != op);
+
             return result;
         }
 
-        private static bool Poly2ContainsPoly1(OutputPoint outPt1, OutputPoint outPt2)
+        private static bool Poly2ContainsPoly1(OutputPoint outputPoint1, OutputPoint outputPoint2)
         {
-            OutputPoint op = outPt1;
+            var op = outputPoint1;
             do
             {
-                //nb: PointInPolygon returns 0 if false, +1 if true, -1 if point on polygon
-                int res = PointInPolygon(op.Point, outPt2);
-                if (res >= 0) return res > 0;
+                // nb: PointInPolygon returns 0 if false, +1 if true, -1 if point on polygon
+                var res = PointInPolygon(op.Point, outputPoint2);
+
+                if (res >= 0)
+                {
+                    return res > 0;
+                }
                 op = op.Next;
             }
-            while (op != outPt1);
+            while (op != outputPoint1);
+
             return true;
         }
 
         private void FixupFirstLefts1(OutputPolygon oldOutputPolygon, OutputPolygon newOutputPolygon)
         {
-            foreach (OutputPolygon outRec in _outputPolygons)
+            foreach (var polygon in _outputPolygons)
             {
-                OutputPolygon firstLeft = ParseFirstLeft(outRec.FirstLeft);
-                if (outRec.Points != null && firstLeft == oldOutputPolygon)
+                var firstLeft = ParseFirstLeft(polygon.FirstLeft);
+
+                if (polygon.Points == null || firstLeft != oldOutputPolygon)
                 {
-                    if (Poly2ContainsPoly1(outRec.Points, newOutputPolygon.Points))
-                        outRec.FirstLeft = newOutputPolygon;
+                    continue;
+                }
+
+                if (Poly2ContainsPoly1(polygon.Points, newOutputPolygon.Points))
+                {
+                    polygon.FirstLeft = newOutputPolygon;
                 }
             }
         }
 
         private void FixupFirstLefts2(OutputPolygon innerOutputPolygon, OutputPolygon outerOutputPolygon)
         {
-            //A polygon has split into two such that one is now the inner of the other.
-            //It's possible that these polygons now wrap around other polygons, so check
-            //every polygon that's also contained by OuterOutRec's FirstLeft container
-            //(including nil) to see if they've become inner to the new inner polygon ...
-            OutputPolygon orfl = outerOutputPolygon.FirstLeft;
-            foreach (OutputPolygon outRec in _outputPolygons)
+            // A polygon has split into two such that one is now the inner of the other.
+            // It's possible that these polygons now wrap around other polygons, so check
+            // every polygon that's also contained by OuterOutRec's FirstLeft container
+            // (including nil) to see if they've become inner to the new inner polygon ...
+            var outRecFirstLeft = outerOutputPolygon.FirstLeft;
+
+            foreach (var polygon in _outputPolygons)
             {
-                if (outRec.Points == null || outRec == outerOutputPolygon || outRec == innerOutputPolygon)
+                if (polygon.Points == null || polygon == outerOutputPolygon || polygon == innerOutputPolygon)
+                {
                     continue;
-                OutputPolygon firstLeft = ParseFirstLeft(outRec.FirstLeft);
-                if (firstLeft != orfl && firstLeft != innerOutputPolygon && firstLeft != outerOutputPolygon)
+                }
+
+                var firstLeft = ParseFirstLeft(polygon.FirstLeft);
+
+                if (firstLeft != outRecFirstLeft && firstLeft != innerOutputPolygon && firstLeft != outerOutputPolygon)
+                {
                     continue;
-                if (Poly2ContainsPoly1(outRec.Points, innerOutputPolygon.Points))
-                    outRec.FirstLeft = innerOutputPolygon;
-                else if (Poly2ContainsPoly1(outRec.Points, outerOutputPolygon.Points))
-                    outRec.FirstLeft = outerOutputPolygon;
-                else if (outRec.FirstLeft == innerOutputPolygon || outRec.FirstLeft == outerOutputPolygon)
-                    outRec.FirstLeft = orfl;
+                }
+
+                if (Poly2ContainsPoly1(polygon.Points, innerOutputPolygon.Points))
+                {
+                    polygon.FirstLeft = innerOutputPolygon;
+                }
+                else if (Poly2ContainsPoly1(polygon.Points, outerOutputPolygon.Points))
+                {
+                    polygon.FirstLeft = outerOutputPolygon;
+                }
+                else if (polygon.FirstLeft == innerOutputPolygon || polygon.FirstLeft == outerOutputPolygon)
+                {
+                    polygon.FirstLeft = outRecFirstLeft;
+                }
             }
         }
 
         private void FixupFirstLefts3(OutputPolygon oldOutputPolygon, OutputPolygon newOutputPolygon)
         {
-            //same as FixupFirstLefts1 but doesn't call Poly2ContainsPoly1()
-            foreach (OutputPolygon outRec in _outputPolygons)
+            // same as FixupFirstLefts1 but doesn't call Poly2ContainsPoly1()
+            foreach (var polygon in _outputPolygons)
             {
-                OutputPolygon firstLeft = ParseFirstLeft(outRec.FirstLeft);
-                if (outRec.Points != null && firstLeft == oldOutputPolygon)
-                    outRec.FirstLeft = newOutputPolygon;
+                var firstLeft = ParseFirstLeft(polygon.FirstLeft);
+                if (polygon.Points != null && firstLeft == oldOutputPolygon)
+                {
+                    polygon.FirstLeft = newOutputPolygon;
+                }
             }
         }
 
         private static OutputPolygon ParseFirstLeft(OutputPolygon firstLeft)
         {
             while (firstLeft != null && firstLeft.Points == null)
+            {
                 firstLeft = firstLeft.FirstLeft;
+            }
             return firstLeft;
         }
 
         private void JoinCommonEdges()
         {
-            for (int i = 0; i < _joins.Count; i++)
+            foreach (var j in _joins)
             {
-                Join join = _joins[i];
+                var outputPolygon1 = GetOutPolygon(j.OutPoint1.Index);
+                var outputPolygon2 = GetOutPolygon(j.OutPoint2.Index);
 
-                OutputPolygon outRec1 = GetOutPolygon(join.OutPoint1.Index);
-                OutputPolygon outRec2 = GetOutPolygon(join.OutPoint2.Index);
+                if (outputPolygon1.Points == null || outputPolygon2.Points == null) continue;
+                if (outputPolygon1.IsOpen || outputPolygon2.IsOpen) continue;
 
-                if (outRec1.Points == null || outRec2.Points == null) continue;
-                if (outRec1.IsOpen || outRec2.IsOpen) continue;
-
-                //get the polygon fragment with the correct hole state (FirstLeft)
-                //before calling JoinPoints() ...
-                OutputPolygon holeStateRec;
-                if (outRec1 == outRec2) holeStateRec = outRec1;
-                else if (OutRec1RightOfOutRec2(outRec1, outRec2)) holeStateRec = outRec2;
-                else if (OutRec1RightOfOutRec2(outRec2, outRec1)) holeStateRec = outRec1;
-                else holeStateRec = GetLowermostRec(outRec1, outRec2);
-
-                if (!JoinPoints(join, outRec1, outRec2)) continue;
-
-                if (outRec1 == outRec2)
+                // get the polygon fragment with the correct hole state (FirstLeft)
+                // before calling JoinPoints() ...
+                OutputPolygon hole;
+                if (outputPolygon1 == outputPolygon2)
                 {
-                    //instead of joining two polygons, we've just created a new one by
-                    //splitting one polygon into two.
-                    outRec1.Points = join.OutPoint1;
-                    outRec1.BottomPoint = null;
-                    outRec2 = CreateOutPolygon();
-                    outRec2.Points = join.OutPoint2;
+                    hole = outputPolygon1;
+                }
+                else if (OutPolygon1RightOfOutPolygon2(outputPolygon1, outputPolygon2)) hole = outputPolygon2;
+                else if (OutPolygon1RightOfOutPolygon2(outputPolygon2, outputPolygon1)) hole = outputPolygon1;
+                else hole = GetLowermostRec(outputPolygon1, outputPolygon2);
 
-                    //update all OutRec2.Points Index's ...
-                    UpdateOutPtIdxs(outRec2);
+                if (!JoinPoints(j, outputPolygon1, outputPolygon2)) continue;
 
-                    if (Poly2ContainsPoly1(outRec2.Points, outRec1.Points))
+                if (outputPolygon1 == outputPolygon2)
+                {
+                    // instead of joining two polygons, we've just created a new one by
+                    // splitting one polygon into two.
+                    outputPolygon1.Points = j.OutPoint1;
+                    outputPolygon1.BottomPoint = null;
+                    outputPolygon2 = CreateOutPolygon();
+                    outputPolygon2.Points = j.OutPoint2;
+
+                    // update all outputPolygon2.Points Index's ...
+                    UpdateOutPtIdxs(outputPolygon2);
+
+                    if (Poly2ContainsPoly1(outputPolygon2.Points, outputPolygon1.Points))
                     {
-                        //outPolygon1 contains outPolygon2 ...
-                        outRec2.IsHole = !outRec1.IsHole;
-                        outRec2.FirstLeft = outRec1;
+                        // outPolygon1 contains outPolygon2 ...
+                        outputPolygon2.IsHole = !outputPolygon1.IsHole;
+                        outputPolygon2.FirstLeft = outputPolygon1;
 
-                        if (_usingTreeSolution) FixupFirstLefts2(outRec2, outRec1);
+                        if (_usingTreeSolution) FixupFirstLefts2(outputPolygon2, outputPolygon1);
 
-                        if ((outRec2.IsHole ^ ReverseSolution) == (Area(outRec2) > 0))
-                            ReverseLinks(outRec2.Points);
+                        if ((outputPolygon2.IsHole ^ ReverseSolution) == outputPolygon2.Area > 0)
+                            ReverseLinks(outputPolygon2.Points);
 
                     }
-                    else if (Poly2ContainsPoly1(outRec1.Points, outRec2.Points))
+                    else if (Poly2ContainsPoly1(outputPolygon1.Points, outputPolygon2.Points))
                     {
-                        //outPolygon2 contains outPolygon1 ...
-                        outRec2.IsHole = outRec1.IsHole;
-                        outRec1.IsHole = !outRec2.IsHole;
-                        outRec2.FirstLeft = outRec1.FirstLeft;
-                        outRec1.FirstLeft = outRec2;
+                        // outPolygon2 contains outPolygon1 ...
+                        outputPolygon2.IsHole = outputPolygon1.IsHole;
+                        outputPolygon1.IsHole = !outputPolygon2.IsHole;
+                        outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
+                        outputPolygon1.FirstLeft = outputPolygon2;
 
-                        if (_usingTreeSolution) FixupFirstLefts2(outRec1, outRec2);
+                        if (_usingTreeSolution)
+                        {
+                            FixupFirstLefts2(outputPolygon1, outputPolygon2);
+                        }
 
-                        if ((outRec1.IsHole ^ ReverseSolution) == (Area(outRec1) > 0))
-                            ReverseLinks(outRec1.Points);
+                        if ((outputPolygon1.IsHole ^ ReverseSolution) == outputPolygon1.Area > 0)
+                        {
+                            ReverseLinks(outputPolygon1.Points);
+                        }
                     }
                     else
                     {
-                        //the 2 polygons are completely separate ...
-                        outRec2.IsHole = outRec1.IsHole;
-                        outRec2.FirstLeft = outRec1.FirstLeft;
+                        // the 2 polygons are completely separate ...
+                        outputPolygon2.IsHole = outputPolygon1.IsHole;
+                        outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
 
-                        //fixup FirstLeft pointers that may need reassigning to OutRec2
-                        if (_usingTreeSolution) FixupFirstLefts1(outRec1, outRec2);
+                        // fixup FirstLeft pointers that may need reassigning to OutRec2
+                        if (_usingTreeSolution)
+                        {
+                            FixupFirstLefts1(outputPolygon1, outputPolygon2);
+                        }
                     }
 
                 }
@@ -3391,390 +3865,106 @@ namespace Clipper
                 {
                     //joined 2 polygons together ...
 
-                    outRec2.Points = null;
-                    outRec2.BottomPoint = null;
-                    outRec2.Index = outRec1.Index;
+                    outputPolygon2.Points = null;
+                    outputPolygon2.BottomPoint = null;
+                    outputPolygon2.Index = outputPolygon1.Index;
 
-                    outRec1.IsHole = holeStateRec.IsHole;
-                    if (holeStateRec == outRec2)
-                        outRec1.FirstLeft = outRec2.FirstLeft;
-                    outRec2.FirstLeft = outRec1;
+                    outputPolygon1.IsHole = hole.IsHole;
+                    if (hole == outputPolygon2)
+                        outputPolygon1.FirstLeft = outputPolygon2.FirstLeft;
+                    outputPolygon2.FirstLeft = outputPolygon1;
 
                     //fixup FirstLeft pointers that may need reassigning to OutRec1
-                    if (_usingTreeSolution) FixupFirstLefts3(outRec2, outRec1);
+                    if (_usingTreeSolution)
+                    {
+                        FixupFirstLefts3(outputPolygon2, outputPolygon1);
+                    }
                 }
             }
         }
 
-        private void UpdateOutPtIdxs(OutputPolygon outrec)
+        private static void UpdateOutPtIdxs(OutputPolygon outputPolygon)
         {
-            OutputPoint op = outrec.Points;
+            var points = outputPolygon.Points;
             do
             {
-                op.Index = outrec.Index;
-                op = op.Prev;
+                points.Index = outputPolygon.Index;
+                points = points.Prev;
             }
-            while (op != outrec.Points);
+            while (points != outputPolygon.Points);
         }
 
         private void DoSimplePolygons()
         {
-            int i = 0;
+            var i = 0;
             while (i < _outputPolygons.Count)
             {
-                OutputPolygon outrec = _outputPolygons[i++];
-                OutputPoint op = outrec.Points;
-                if (op == null || outrec.IsOpen) continue;
-                do //for each Point in Polygon until duplicate found do ...
+                var outputPolygon1 = _outputPolygons[i++];
+                var op = outputPolygon1.Points;
+                if (op == null || outputPolygon1.IsOpen)
                 {
-                    OutputPoint op2 = op.Next;
-                    while (op2 != outrec.Points)
+                    continue;
+                }
+
+                do // for each Point in Polygon until duplicate found do ...
+                {
+                    var op2 = op.Next;
+                    while (op2 != outputPolygon1.Points)
                     {
-                        if ((op.Point == op2.Point) && op2.Next != op && op2.Prev != op)
+                        if (op.Point == op2.Point && op2.Next != op && op2.Prev != op)
                         {
-                            //split the polygon into two ...
-                            OutputPoint op3 = op.Prev;
-                            OutputPoint op4 = op2.Prev;
+                            // split the polygon into two ...
+                            var op3 = op.Prev;
+                            var op4 = op2.Prev;
                             op.Prev = op4;
                             op4.Next = op;
                             op2.Prev = op3;
                             op3.Next = op2;
 
-                            outrec.Points = op;
-                            OutputPolygon outrec2 = CreateOutPolygon();
-                            outrec2.Points = op2;
-                            UpdateOutPtIdxs(outrec2);
-                            if (Poly2ContainsPoly1(outrec2.Points, outrec.Points))
+                            outputPolygon1.Points = op;
+                            var outputPolygon2 = CreateOutPolygon();
+                            outputPolygon2.Points = op2;
+                            UpdateOutPtIdxs(outputPolygon2);
+                            if (Poly2ContainsPoly1(outputPolygon2.Points, outputPolygon1.Points))
                             {
-                                //OutRec2 is contained by OutRec1 ...
-                                outrec2.IsHole = !outrec.IsHole;
-                                outrec2.FirstLeft = outrec;
-                                if (_usingTreeSolution) FixupFirstLefts2(outrec2, outrec);
+                                // outputPolygon2 is contained by outputPolygon1
+                                outputPolygon2.IsHole = !outputPolygon1.IsHole;
+                                outputPolygon2.FirstLeft = outputPolygon1;
+                                if (_usingTreeSolution)
+                                {
+                                    FixupFirstLefts2(outputPolygon2, outputPolygon1);
+                                }
+                            }
+                            else if (Poly2ContainsPoly1(outputPolygon1.Points, outputPolygon2.Points))
+                            {
+                                // outputPolygon1 is contained by outputPolygon2.
+                                outputPolygon2.IsHole = outputPolygon1.IsHole;
+                                outputPolygon1.IsHole = !outputPolygon2.IsHole;
+                                outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
+                                outputPolygon1.FirstLeft = outputPolygon2;
+                                if (_usingTreeSolution)
+                                {
+                                    FixupFirstLefts2(outputPolygon1, outputPolygon2);
+                                }
                             }
                             else
-                              if (Poly2ContainsPoly1(outrec.Points, outrec2.Points))
                             {
-                                //OutRec1 is contained by OutRec2 ...
-                                outrec2.IsHole = outrec.IsHole;
-                                outrec.IsHole = !outrec2.IsHole;
-                                outrec2.FirstLeft = outrec.FirstLeft;
-                                outrec.FirstLeft = outrec2;
-                                if (_usingTreeSolution) FixupFirstLefts2(outrec, outrec2);
+                                // the 2 polygons are separate ...
+                                outputPolygon2.IsHole = outputPolygon1.IsHole;
+                                outputPolygon2.FirstLeft = outputPolygon1.FirstLeft;
+                                if (_usingTreeSolution)
+                                {
+                                    FixupFirstLefts1(outputPolygon1, outputPolygon2);
+                                }
                             }
-                            else
-                            {
-                                //the 2 polygons are separate ...
-                                outrec2.IsHole = outrec.IsHole;
-                                outrec2.FirstLeft = outrec.FirstLeft;
-                                if (_usingTreeSolution) FixupFirstLefts1(outrec, outrec2);
-                            }
-                            op2 = op; //ie get ready for the next iteration
+                            op2 = op; // Get ready for the next iteration
                         }
                         op2 = op2.Next;
                     }
                     op = op.Next;
                 }
-                while (op != outrec.Points);
+                while (op != outputPolygon1.Points);
             }
-        }
-
-        public static double Area(Polygon poly)
-        {
-            int cnt = (int)poly.Count;
-            if (cnt < 3) return 0;
-            double a = 0;
-            for (int i = 0, j = cnt - 1; i < cnt; ++i)
-            {
-                a += ((double)poly[j].X + poly[i].X) * ((double)poly[j].Y - poly[i].Y);
-                j = i;
-            }
-            return -a * 0.5;
-        }
-
-        internal double Area(OutputPolygon outputPolygon)
-        {
-            return Area(outputPolygon.Points);
-        }
-
-        internal double Area(OutputPoint op)
-        {
-            OutputPoint opFirst = op;
-            if (op == null) return 0;
-            double a = 0;
-            do
-            {
-                a = a + (double)(op.Prev.Point.X + op.Point.X) * (double)(op.Prev.Point.Y - op.Point.Y);
-                op = op.Next;
-            } while (op != opFirst);
-            return a * 0.5;
-        }
-
-        public static PolygonPath SimplifyPolygon(Polygon poly,
-              PolygonFillType fillType = PolygonFillType.EvenOdd)
-        {
-            PolygonPath result = new PolygonPath();
-            Clipper c = new Clipper();
-            c.StrictlySimple = true;
-            c.AddPath(poly, PolygonKind.Subject, true);
-            c.Execute(ClipOperation.Union, result, fillType, fillType);
-            return result;
-        }
-
-        public static PolygonPath SimplifyPolygons(PolygonPath polys,
-            PolygonFillType fillType = PolygonFillType.EvenOdd)
-        {
-            PolygonPath result = new PolygonPath();
-            Clipper c = new Clipper();
-            c.StrictlySimple = true;
-            c.AddPaths(polys, PolygonKind.Subject);
-            c.Execute(ClipOperation.Union, result, fillType, fillType);
-            return result;
-        }
-
-        private static double DistanceFromLineSqrd(IntPoint point, IntPoint linePoint1, IntPoint linePoint2)
-        {
-            //The equation of a line in general form (Ax + By + C = 0)
-            //given 2 points (x¹,y¹) & (x²,y²) is ...
-            //(y¹ - y²)x + (x² - x¹)y + (y² - y¹)x¹ - (x² - x¹)y¹ = 0
-            //A = (y¹ - y²); B = (x² - x¹); C = (y² - y¹)x¹ - (x² - x¹)y¹
-            //perpendicular distance of point (x³,y³) = (Ax³ + By³ + C)/Sqrt(A² + B²)
-            //see http://en.wikipedia.org/wiki/Perpendicular_distance
-            double A = linePoint1.Y - linePoint2.Y;
-            double B = linePoint2.X - linePoint1.X;
-            double C = A * linePoint1.X + B * linePoint1.Y;
-            C = A * point.X + B * point.Y - C;
-            return (C * C) / (A * A + B * B);
-        }
-
-        private static bool SlopesNearCollinear(
-            IntPoint point1, IntPoint point2, IntPoint point3, double distanceSquared)
-        {
-            // this function is more accurate when the point that's GEOMETRICALLY 
-            // between the other 2 points is the one that's tested for distance.  
-            // nb: with 'spikes', either point1 or point3 is geometrically between the other pts                    
-            if (Math.Abs(point1.X - point2.X) > Math.Abs(point1.Y - point2.Y))
-            {
-                if ((point1.X > point2.X) == (point1.X < point3.X))
-                    return DistanceFromLineSqrd(point1, point2, point3) < distanceSquared;
-                else if ((point2.X > point1.X) == (point2.X < point3.X))
-                    return DistanceFromLineSqrd(point2, point1, point3) < distanceSquared;
-                else
-                    return DistanceFromLineSqrd(point3, point1, point2) < distanceSquared;
-            }
-            else
-            {
-                if ((point1.Y > point2.Y) == (point1.Y < point3.Y))
-                    return DistanceFromLineSqrd(point1, point2, point3) < distanceSquared;
-                else if ((point2.Y > point1.Y) == (point2.Y < point3.Y))
-                    return DistanceFromLineSqrd(point2, point1, point3) < distanceSquared;
-                else
-                    return DistanceFromLineSqrd(point3, point1, point2) < distanceSquared;
-            }
-        }
-
-        private static bool PointsAreClose(IntPoint pt1, IntPoint pt2, double distSqrd)
-        {
-            double dx = (double)pt1.X - pt2.X;
-            double dy = (double)pt1.Y - pt2.Y;
-            return ((dx * dx) + (dy * dy) <= distSqrd);
-        }
-
-        private static OutputPoint ExcludeOp(OutputPoint op)
-        {
-            OutputPoint result = op.Prev;
-            result.Next = op.Next;
-            op.Next.Prev = result;
-            result.Index = 0;
-            return result;
-        }
-
-        public static Polygon CleanPolygon(Polygon path, double distance = 1.415)
-        {
-            //distance = proximity in units/pixels below which vertices will be stripped. 
-            //Default ~= sqrt(2) so when adjacent vertices or semi-adjacent vertices have 
-            //both x & y coords within 1 unit, then the second vertex will be stripped.
-
-            int cnt = path.Count;
-
-            if (cnt == 0) return new Polygon();
-
-            OutputPoint[] outputPoints = new OutputPoint[cnt];
-            for (int i = 0; i < cnt; ++i) outputPoints[i] = new OutputPoint();
-
-            for (int i = 0; i < cnt; ++i)
-            {
-                outputPoints[i].Point = path[i];
-                outputPoints[i].Next = outputPoints[(i + 1) % cnt];
-                outputPoints[i].Next.Prev = outputPoints[i];
-                outputPoints[i].Index = 0;
-            }
-
-            double distSqrd = distance * distance;
-            OutputPoint op = outputPoints[0];
-            while (op.Index == 0 && op.Next != op.Prev)
-            {
-                if (PointsAreClose(op.Point, op.Prev.Point, distSqrd))
-                {
-                    op = ExcludeOp(op);
-                    cnt--;
-                }
-                else if (PointsAreClose(op.Prev.Point, op.Next.Point, distSqrd))
-                {
-                    ExcludeOp(op.Next);
-                    op = ExcludeOp(op);
-                    cnt -= 2;
-                }
-                else if (SlopesNearCollinear(op.Prev.Point, op.Point, op.Next.Point, distSqrd))
-                {
-                    op = ExcludeOp(op);
-                    cnt--;
-                }
-                else
-                {
-                    op.Index = 1;
-                    op = op.Next;
-                }
-            }
-
-            if (cnt < 3) cnt = 0;
-            Polygon result = new Polygon(cnt);
-            for (int i = 0; i < cnt; ++i)
-            {
-                result.Add(op.Point);
-                op = op.Next;
-            }
-            outputPoints = null;
-            return result;
-        }
-
-        public static PolygonPath CleanPolygons(PolygonPath polys,
-            double distance = 1.415)
-        {
-            PolygonPath result = new PolygonPath(polys.Count);
-            for (int i = 0; i < polys.Count; i++)
-                result.Add(CleanPolygon(polys[i], distance));
-            return result;
-        }
-
-        internal static PolygonPath Minkowski(Polygon pattern, Polygon path, bool isSum, bool isClosed)
-        {
-            int delta = (isClosed ? 1 : 0);
-            int polyCnt = pattern.Count;
-            int pathCnt = path.Count;
-            PolygonPath result = new PolygonPath(pathCnt);
-            if (isSum)
-                for (int i = 0; i < pathCnt; i++)
-                {
-                    Polygon p = new Polygon(polyCnt);
-                    foreach (IntPoint ip in pattern)
-                        p.Add(new IntPoint(path[i].X + ip.X, path[i].Y + ip.Y));
-                    result.Add(p);
-                }
-            else
-                for (int i = 0; i < pathCnt; i++)
-                {
-                    Polygon p = new Polygon(polyCnt);
-                    foreach (IntPoint ip in pattern)
-                        p.Add(new IntPoint(path[i].X - ip.X, path[i].Y - ip.Y));
-                    result.Add(p);
-                }
-
-            PolygonPath quads = new PolygonPath((pathCnt + delta) * (polyCnt + 1));
-            for (int i = 0; i < pathCnt - 1 + delta; i++)
-                for (int j = 0; j < polyCnt; j++)
-                {
-                    Polygon quad = new Polygon(4);
-                    quad.Add(result[i % pathCnt][j % polyCnt]);
-                    quad.Add(result[(i + 1) % pathCnt][j % polyCnt]);
-                    quad.Add(result[(i + 1) % pathCnt][(j + 1) % polyCnt]);
-                    quad.Add(result[i % pathCnt][(j + 1) % polyCnt]);
-                    if (!Orientation(quad)) quad.Reverse();
-                    quads.Add(quad);
-                }
-            return quads;
-        }
-
-        public static PolygonPath MinkowskiSum(Polygon pattern, Polygon path, bool pathIsClosed)
-        {
-            PolygonPath paths = Minkowski(pattern, path, true, pathIsClosed);
-            Clipper c = new Clipper();
-            c.AddPaths(paths, PolygonKind.Subject);
-            c.Execute(ClipOperation.Union, paths, PolygonFillType.NonZero, PolygonFillType.NonZero);
-            return paths;
-        }
-
-        private static Polygon TranslatePath(Polygon path, IntPoint delta)
-        {
-            Polygon outPath = new Polygon(path.Count);
-            for (int i = 0; i < path.Count; i++)
-                outPath.Add(new IntPoint(path[i].X + delta.X, path[i].Y + delta.Y));
-            return outPath;
-        }
-
-        public static PolygonPath MinkowskiSum(Polygon pattern, PolygonPath paths, bool pathIsClosed)
-        {
-            PolygonPath solution = new PolygonPath();
-            Clipper c = new Clipper();
-            for (int i = 0; i < paths.Count; ++i)
-            {
-                PolygonPath tmp = Minkowski(pattern, paths[i], true, pathIsClosed);
-                c.AddPaths(tmp, PolygonKind.Subject);
-                if (pathIsClosed)
-                {
-                    Polygon path = TranslatePath(paths[i], pattern[0]);
-                    c.AddPath(path, PolygonKind.Clip, true);
-                }
-            }
-            c.Execute(ClipOperation.Union, solution,
-              PolygonFillType.NonZero, PolygonFillType.NonZero);
-            return solution;
-        }
-
-        public static PolygonPath MinkowskiDiff(Polygon poly1, Polygon poly2)
-        {
-            PolygonPath paths = Minkowski(poly1, poly2, false, true);
-            Clipper c = new Clipper();
-            c.AddPaths(paths, PolygonKind.Subject);
-            c.Execute(ClipOperation.Union, paths, PolygonFillType.NonZero, PolygonFillType.NonZero);
-            return paths;
-        }
-
-        public static PolygonPath PolyTreeToPaths(PolygonTree polytree)
-        {
-
-            var result = new PolygonPath { Capacity = polytree.Children.Count };
-            AddPolyNodeToPaths(polytree, NodeType.Any, result);
-            return result;
-        }
-
-        internal static void AddPolyNodeToPaths(PolygonNode polynode, NodeType nt, PolygonPath paths)
-        {
-            bool match = true;
-            switch (nt)
-            {
-                case NodeType.Open: return;
-                case NodeType.Closed: match = !polynode.IsOpen; break;
-                default: break;
-            }
-
-            if (polynode.Polygon.Count > 0 && match)
-                paths.Add(polynode.Polygon);
-            foreach (PolygonNode pn in polynode.Children)
-                AddPolyNodeToPaths(pn, nt, paths);
-        }
-
-        public static PolygonPath OpenPathsFromPolyTree(PolygonTree polytree)
-        {
-            var result = new PolygonPath { Capacity = polytree.Children.Count };
-            result.AddRange(from node in polytree.Children where node.IsOpen select node.Polygon);
-            return result;
-        }
-
-        public static PolygonPath ClosedPathsFromPolyTree(PolygonTree polytree)
-        {
-            var result = new PolygonPath { Capacity = polytree.Children.Count };
-            AddPolyNodeToPaths(polytree, NodeType.Closed, result);
-            return result;
         }
     }
 }

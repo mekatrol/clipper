@@ -56,6 +56,11 @@ namespace Clipper
 
         public bool IsClosed { get; set; } = true;
 
+        public Containment GeometricallyContains(IntPoint point)
+        {
+            return GeometryHelper.PolygonContainsPoint(this, point);
+        }
+
         /// <summary>
         /// Sort points such that the bottom left point is first,
         /// and winding order is maintained.
@@ -111,6 +116,93 @@ namespace Clipper
 
                 i++;
             }
+        }
+
+        public Polygon Translated(IntPoint offset)
+        {
+            var translated = new Polygon(Count);
+            for (var i = 0; i < Count; i++)
+            {
+                translated.Add(new IntPoint(this[i].X + offset.X, this[i].Y + offset.Y));
+            }
+            return translated;
+        }
+
+        public Polygon Cleaned(double distance = 1.415)
+        {
+            // distance = proximity in units/pixels below which vertices will be stripped. 
+            // Default ~= sqrt(2) so when adjacent vertices or semi-adjacent vertices have 
+            // both x & y coords within 1 unit, then the second vertex will be stripped.
+
+            var pointCount = Count;
+
+            if (pointCount == 0)
+            {
+                return new Polygon();
+            }
+
+            var outputPoints = new OutputPoint[pointCount];
+            for (var i = 0; i < pointCount; ++i)
+            {
+                outputPoints[i] = new OutputPoint();
+            }
+
+            for (var i = 0; i < pointCount; ++i)
+            {
+                outputPoints[i].Point = this[i];
+                outputPoints[i].Next = outputPoints[(i + 1) % pointCount];
+                outputPoints[i].Next.Prev = outputPoints[i];
+                outputPoints[i].Index = 0;
+            }
+
+            var distSqrd = distance * distance;
+            var op = outputPoints[0];
+
+            while (op.Index == 0 && op.Next != op.Prev)
+            {
+                if (GeometryHelper.PointsAreClose(op.Point, op.Prev.Point, distSqrd))
+                {
+                    op = ExcludeOutputPoint(op);
+                    pointCount--;
+                }
+                else if (GeometryHelper.PointsAreClose(op.Prev.Point, op.Next.Point, distSqrd))
+                {
+                    ExcludeOutputPoint(op.Next);
+                    op = ExcludeOutputPoint(op);
+                    pointCount -= 2;
+                }
+                else if (GeometryHelper.SlopesNearCollinear(op.Prev.Point, op.Point, op.Next.Point, distSqrd))
+                {
+                    op = ExcludeOutputPoint(op);
+                    pointCount--;
+                }
+                else
+                {
+                    op.Index = 1;
+                    op = op.Next;
+                }
+            }
+
+            if (pointCount < 3) pointCount = 0;
+
+            var result = new Polygon(pointCount);
+
+            for (var i = 0; i < pointCount; ++i)
+            {
+                result.Add(op.Point);
+                op = op.Next;
+            }
+
+            return result;
+        }
+
+        private static OutputPoint ExcludeOutputPoint(OutputPoint outputPoint)
+        {
+            var result = outputPoint.Prev;
+            result.Next = outputPoint.Next;
+            outputPoint.Next.Prev = result;
+            result.Index = 0;
+            return result;
         }
     }
 }

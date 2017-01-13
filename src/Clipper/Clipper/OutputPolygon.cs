@@ -9,9 +9,14 @@ namespace Clipper
         internal int Index = ClippingHelper.Unassigned;
         internal bool IsHole;
         internal bool IsOpen;
-        internal OutputPolygon FirstLeft; //see comments in clipper.pas
+        internal OutputPolygon FirstLeft; 
         internal OutputPoint Points;
         internal OutputPoint BottomPoint;
         internal PolygonNode PolygonNode;
-    };
+
+        internal double Area => Points.Area;
+
+        internal PolygonOrientation Orientation
+            => Points.Area > 0 ? PolygonOrientation.CounterClockwise : PolygonOrientation.Clockwise;
+    }
 }
