@@ -2149,6 +2149,30 @@ namespace Clipper
         }
 #endif
 
+        private static long GetFillTypeWindingCount(PolygonFillType type, int count) 
+        {
+            switch (type)
+            {
+                case PolygonFillType.Positive: return count;
+                case PolygonFillType.Negative: return -count;
+                default: return Math.Abs(count);
+            }
+        }
+
+        private void GetFillType(Edge edge, out PolygonFillType fillType1, out PolygonFillType fillType2)
+        {
+            if (edge.Kind == PolygonKind.Subject)
+            {
+                fillType1 = _subjectFillType;
+                fillType2 = _clipFillType;
+            }
+            else
+            {
+                fillType1 = _clipFillType;
+                fillType2 = _subjectFillType;
+            }
+        }
+
         private void IntersectEdges(Edge edge1, Edge edge2, IntPoint point)
         {
             // edge1 will be to the left of edge2 BELOW the intersection. Therefore edge1 is before
@@ -2218,45 +2242,17 @@ namespace Clipper
                 }
             }
 
-            PolygonFillType e1FillType, e2FillType, e1FillType2, e2FillType2;
-            if (edge1.Kind == PolygonKind.Subject)
-            {
-                e1FillType = _subjectFillType;
-                e1FillType2 = _clipFillType;
-            }
-            else
-            {
-                e1FillType = _clipFillType;
-                e1FillType2 = _subjectFillType;
-            }
-            if (edge2.Kind == PolygonKind.Subject)
-            {
-                e2FillType = _subjectFillType;
-                e2FillType2 = _clipFillType;
-            }
-            else
-            {
-                e2FillType = _clipFillType;
-                e2FillType2 = _subjectFillType;
-            }
+            PolygonFillType e1FillType1, e2FillType1, e1FillType2, e2FillType2;
 
-            Func<int, PolygonFillType, long> getWindingCount = (count, type) =>
-            {
-                switch (type)
-                {
-                    case PolygonFillType.Positive: return count;
-                    case PolygonFillType.Negative: return -count;
-                    default: return Math.Abs(count);
-                }
-            };
+            GetFillType(edge1, out e1FillType1, out e1FillType2);
+            GetFillType(edge2, out e2FillType1, out e2FillType2);
 
-            var e1Wc = getWindingCount(edge1.WindCount, e1FillType);
-            var e2Wc = getWindingCount(edge2.WindCount, e2FillType);
+            var e1Wc = GetFillTypeWindingCount(e1FillType1, edge1.WindCount);
+            var e2Wc = GetFillTypeWindingCount(e2FillType1, edge2.WindCount);
 
             if (e1Contributing && e2Contributing)
             {
-                if (e1Wc != 0 &&
-                    e1Wc != 1 ||
+                if (e1Wc != 0 && e1Wc != 1 ||
                     e2Wc != 0 && e2Wc != 1 ||
                     edge1.Kind != edge2.Kind &&
                     _clipOperation != ClipOperation.Xor)
@@ -2290,8 +2286,8 @@ namespace Clipper
             else if ((e1Wc == 0 || e1Wc == 1) && (e2Wc == 0 || e2Wc == 1))
             {
                 // Neither edge is currently contributing.
-                var e1Wc2 = getWindingCount(edge1.WindCount2, e1FillType2);
-                var e2Wc2 = getWindingCount(edge2.WindCount2, e2FillType2);
+                var e1Wc2 = GetFillTypeWindingCount(e1FillType2, edge1.WindCount2);
+                var e2Wc2 = GetFillTypeWindingCount(e2FillType2, edge2.WindCount2);
 
                 if (edge1.Kind != edge2.Kind)
                 {
