@@ -2077,7 +2077,79 @@ namespace Clipper
             edge2.OutIndex = outIdx;
         }
 
-        private void IntersectEdges(Edge edge1, Edge edge2, IntPoint pt)
+#if use_lines
+        private void IntersectLines(
+            Edge edge1, Edge edge2,
+            IntPoint point,
+            bool e1Contributing, bool e2Contributing)
+        {
+            // ignore subject-subject open path intersections UNLESS they
+            // are both open paths, AND they are both 'contributing maximas' ...
+            if (edge1.WindDelta == 0 && edge2.WindDelta == 0)
+            {
+                return;
+            }
+
+            // if intersecting a subj line with a subj poly
+            if (edge1.Kind == edge2.Kind &&
+                edge1.WindDelta != edge2.WindDelta &&
+                _clipOperation == ClipOperation.Union)
+            {
+                if (edge1.WindDelta == 0)
+                {
+                    if (!e2Contributing)
+                    {
+                        return;
+                    }
+
+                    AddOutputPoint(edge1, point);
+                    if (e1Contributing)
+                    {
+                        edge1.OutIndex = ClippingHelper.Unassigned;
+                    }
+                }
+                else
+                {
+                    if (!e1Contributing)
+                    {
+                        return;
+                    }
+
+                    AddOutputPoint(edge2, point);
+                    if (e2Contributing)
+                    {
+                        edge2.OutIndex = ClippingHelper.Unassigned;
+                    }
+                }
+            }
+            else if (edge1.Kind != edge2.Kind)
+            {
+                if (edge1.WindDelta == 0 &&
+                    Math.Abs(edge2.WindCount) == 1 &&
+                    (_clipOperation != ClipOperation.Union || edge2.WindCount2 == 0))
+                {
+                    AddOutputPoint(edge1, point);
+                    if (e1Contributing)
+                    {
+                        edge1.OutIndex = ClippingHelper.Unassigned;
+                    }
+                }
+                else if (edge2.WindDelta == 0 &&
+                         Math.Abs(edge1.WindCount) == 1 &&
+                         (_clipOperation != ClipOperation.Union || edge1.WindCount2 == 0))
+                {
+                    AddOutputPoint(edge2, point);
+
+                    if (e2Contributing)
+                    {
+                        edge2.OutIndex = ClippingHelper.Unassigned;
+                    }
+                }
+            }
+        }
+#endif
+
+        private void IntersectEdges(Edge edge1, Edge edge2, IntPoint point)
         {
             // edge1 will be to the left of edge2 BELOW the intersection. Therefore edge1 is before
             // edge2 in AEL except when edge1 is being inserted at the intersection point ...
@@ -2086,63 +2158,10 @@ namespace Clipper
             var e2Contributing = edge2.OutIndex >= 0;
 
 #if use_lines
-            // if either edge is on an OPEN path ...
+            // If either edge is on an OPEN path.
             if (edge1.WindDelta == 0 || edge2.WindDelta == 0)
             {
-                // ignore subject-subject open path intersections UNLESS they
-                // are both open paths, AND they are both 'contributing maximas' ...
-                if (edge1.WindDelta == 0 && edge2.WindDelta == 0) return;
-
-                // if intersecting a subj line with a subj poly ...
-                if (edge1.Kind == edge2.Kind &&
-                    edge1.WindDelta != edge2.WindDelta &&
-                    _clipOperation == ClipOperation.Union)
-                {
-                    if (edge1.WindDelta == 0)
-                    {
-                        if (!e2Contributing) return;
-
-                        AddOutputPoint(edge1, pt);
-                        if (e1Contributing)
-                        {
-                            edge1.OutIndex = ClippingHelper.Unassigned;
-                        }
-                    }
-                    else
-                    {
-                        if (!e1Contributing) return;
-
-                        AddOutputPoint(edge2, pt);
-                        if (e2Contributing)
-                        {
-                            edge2.OutIndex = ClippingHelper.Unassigned;
-                        }
-                    }
-                }
-                else if (edge1.Kind != edge2.Kind)
-                {
-                    if (edge1.WindDelta == 0 &&
-                        Math.Abs(edge2.WindCount) == 1 &&
-                        (_clipOperation != ClipOperation.Union || edge2.WindCount2 == 0))
-                    {
-                        AddOutputPoint(edge1, pt);
-                        if (e1Contributing)
-                        {
-                            edge1.OutIndex = ClippingHelper.Unassigned;
-                        }
-                    }
-                    else if (edge2.WindDelta == 0 &&
-                             Math.Abs(edge1.WindCount) == 1 &&
-                             (_clipOperation != ClipOperation.Union || edge1.WindCount2 == 0))
-                    {
-                        AddOutputPoint(edge2, pt);
-                        if (e2Contributing)
-                        {
-                            edge2.OutIndex = ClippingHelper.Unassigned;
-                        }
-                    }
-                }
-
+                IntersectLines(edge1, edge2, point, e1Contributing, e2Contributing);
                 return;
             }
 #endif
@@ -2221,21 +2240,18 @@ namespace Clipper
                 e2FillType2 = _subjectFillType;
             }
 
-            int e1Wc, e2Wc;
-
-            switch (e1FillType)
+            Func<int, PolygonFillType, long> getWindingCount = (count, type) =>
             {
-                case PolygonFillType.Positive: e1Wc = edge1.WindCount; break;
-                case PolygonFillType.Negative: e1Wc = -edge1.WindCount; break;
-                default: e1Wc = Math.Abs(edge1.WindCount); break;
-            }
+                switch (type)
+                {
+                    case PolygonFillType.Positive: return count;
+                    case PolygonFillType.Negative: return -count;
+                    default: return Math.Abs(count);
+                }
+            };
 
-            switch (e2FillType)
-            {
-                case PolygonFillType.Positive: e2Wc = edge2.WindCount; break;
-                case PolygonFillType.Negative: e2Wc = -edge2.WindCount; break;
-                default: e2Wc = Math.Abs(edge2.WindCount); break;
-            }
+            var e1Wc = getWindingCount(edge1.WindCount, e1FillType);
+            var e2Wc = getWindingCount(edge2.WindCount, e2FillType);
 
             if (e1Contributing && e2Contributing)
             {
@@ -2245,12 +2261,12 @@ namespace Clipper
                     edge1.Kind != edge2.Kind &&
                     _clipOperation != ClipOperation.Xor)
                 {
-                    AddLocalMaxPoly(edge1, edge2, pt);
+                    AddLocalMaxPoly(edge1, edge2, point);
                 }
                 else
                 {
-                    AddOutputPoint(edge1, pt);
-                    AddOutputPoint(edge2, pt);
+                    AddOutputPoint(edge1, point);
+                    AddOutputPoint(edge2, point);
                     SwapSides(edge1, edge2);
                     SwapPolyIndexes(edge1, edge2);
                 }
@@ -2259,7 +2275,7 @@ namespace Clipper
             {
                 if (e2Wc != 0 && e2Wc != 1) return;
 
-                AddOutputPoint(edge1, pt);
+                AddOutputPoint(edge1, point);
                 SwapSides(edge1, edge2);
                 SwapPolyIndexes(edge1, edge2);
             }
@@ -2267,32 +2283,19 @@ namespace Clipper
             {
                 if (e1Wc != 0 && e1Wc != 1) return;
 
-                AddOutputPoint(edge2, pt);
+                AddOutputPoint(edge2, point);
                 SwapSides(edge1, edge2);
                 SwapPolyIndexes(edge1, edge2);
             }
             else if ((e1Wc == 0 || e1Wc == 1) && (e2Wc == 0 || e2Wc == 1))
             {
                 // Neither edge is currently contributing.
-                long e1Wc2, e2Wc2;
-
-                switch (e1FillType2)
-                {
-                    case PolygonFillType.Positive: e1Wc2 = edge1.WindCount2; break;
-                    case PolygonFillType.Negative: e1Wc2 = -edge1.WindCount2; break;
-                    default: e1Wc2 = Math.Abs(edge1.WindCount2); break;
-                }
-
-                switch (e2FillType2)
-                {
-                    case PolygonFillType.Positive: e2Wc2 = edge2.WindCount2; break;
-                    case PolygonFillType.Negative: e2Wc2 = -edge2.WindCount2; break;
-                    default: e2Wc2 = Math.Abs(edge2.WindCount2); break;
-                }
+                var e1Wc2 = getWindingCount(edge1.WindCount2, e1FillType2);
+                var e2Wc2 = getWindingCount(edge2.WindCount2, e2FillType2);
 
                 if (edge1.Kind != edge2.Kind)
                 {
-                    AddLocalMinPoly(edge1, edge2, pt);
+                    AddLocalMinPoly(edge1, edge2, point);
                 }
                 else if (e1Wc == 1 && e2Wc == 1)
                 {
@@ -2300,19 +2303,28 @@ namespace Clipper
                     {
                         case ClipOperation.Intersection:
                             if (e1Wc2 > 0 && e2Wc2 > 0)
-                                AddLocalMinPoly(edge1, edge2, pt);
+                            {
+                                AddLocalMinPoly(edge1, edge2, point);
+                            }
                             break;
+
                         case ClipOperation.Union:
                             if (e1Wc2 <= 0 && e2Wc2 <= 0)
-                                AddLocalMinPoly(edge1, edge2, pt);
+                            {
+                                AddLocalMinPoly(edge1, edge2, point);
+                            }
                             break;
+
                         case ClipOperation.Difference:
-                            if (((edge1.Kind == PolygonKind.Clip) && (e1Wc2 > 0) && (e2Wc2 > 0)) ||
-                                ((edge1.Kind == PolygonKind.Subject) && (e1Wc2 <= 0) && (e2Wc2 <= 0)))
-                                AddLocalMinPoly(edge1, edge2, pt);
+                            if (edge1.Kind == PolygonKind.Clip && e1Wc2 > 0 && e2Wc2 > 0 ||
+                                edge1.Kind == PolygonKind.Subject && e1Wc2 <= 0 && e2Wc2 <= 0)
+                            {
+                                AddLocalMinPoly(edge1, edge2, point);
+                            }
                             break;
+
                         case ClipOperation.Xor:
-                            AddLocalMinPoly(edge1, edge2, pt);
+                            AddLocalMinPoly(edge1, edge2, point);
                             break;
                     }
                 }
