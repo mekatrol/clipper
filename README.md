@@ -14,7 +14,6 @@ Changes from the original Angus code base:
 
 5. The ReverseSolution flag changed to ReverseOrientation.
 
-
 The solution is made up of:
 
 1. Clipper - the refactored clipper library.
