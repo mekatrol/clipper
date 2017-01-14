@@ -28,3 +28,6 @@
 15/01/2017 09:53 SimplePolygonsTest        094.33%
 15/01/2017 09:53 ComplexPolygonTest        098.71%
 15/01/2017 09:54 LargePolygonTest          079.08%
+15/01/2017 09:56 SimplePolygonsTest        105.02%
+15/01/2017 09:56 ComplexPolygonTest        109.62%
+15/01/2017 09:57 LargePolygonTest          080.15%

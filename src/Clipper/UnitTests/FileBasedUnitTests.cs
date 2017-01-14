@@ -10,6 +10,14 @@ namespace UnitTests
     [TestClass]
     public class FileBasedUnitTests
     {
+        /************************************************************************************
+         * The tests in this unit test are ignored because they use test data from
+         * Angus' updated unreleased code (that he was kind enough to share with me).
+         * However, some of the tests fail because there are fixes to edges that
+         * foldback on themselves and overlap. Reinclude these tests (or use the 
+         * visualizer) to see when this occurs. Not an issue for 
+         * all but the purest clipping requirements.
+         * **********************************************************************************/
         [TestMethod]
         [Ignore]
         public void NewClipperFileBasedTest()
