@@ -21,6 +21,8 @@ The solution is made up of:
 
 2. ClipperOriginal - Angus' original clipper code (unmodified).
 
+3. ConsolePerformanceProfiler - an executable that can be used by the performance Profiler (menu Analyze | performance Profiler) when profiling the source performance.
+
 3. PerformanceTests - quasi performance tests to compare the refactored code against the original for performance.
 
 4. UnitTests - unit tests for clipper and other functions.
