@@ -85,5 +85,10 @@ namespace Clipper
             // adjoining lower edge. [Helpful in the ProcessHorizontal() method.]
             GeometryHelper.Swap(ref Top.X, ref Bottom.X);
         }
-    };
+
+        public override string ToString()
+        {
+            return $"C:{Current}, B: {Bottom}, T: {Top}, {Kind}, {Side}";
+        }
+    }
 }
