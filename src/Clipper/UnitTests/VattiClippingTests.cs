@@ -2813,7 +2813,7 @@ namespace UnitTests
         }
 
         [TestMethod]
-        public void OpenSubjectClipTest()
+        public void OpenSubject1ClipTest()
         {
             var subject = new PolygonPath(new Polygon(new[]
             {
@@ -2851,7 +2851,7 @@ namespace UnitTests
         }
 
         [TestMethod]
-        public void OpenClipClipTest()
+        public void OpenSubject2ClipTest()
         {
             var clip = new PolygonPath(new Polygon(new[]
             {
