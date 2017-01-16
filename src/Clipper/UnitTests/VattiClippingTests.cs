@@ -2845,6 +2845,7 @@ namespace UnitTests
             var polygon = solution[0];
 
             Assert.AreEqual(3, polygon.Count);
+            Assert.AreEqual(PolygonOrientation.CounterClockwise, polygon.Orientation);
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+10.0 * Scale, +40.0 * Scale) - polygon[0]).Length));
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+30.0 * Scale, +20.0 * Scale) - polygon[1]).Length));
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+50.0 * Scale, +40.0 * Scale) - polygon[2]).Length));
@@ -2882,14 +2883,55 @@ namespace UnitTests
             var polygon = solution[0];
             Assert.AreEqual(2, polygon.Count);
             polygon.OrderBottomLeftFirst();
+            Assert.AreEqual(PolygonOrientation.CounterClockwise, polygon.Orientation);
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+10.0 * Scale, +40.0 * Scale) - polygon[0]).Length));
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+10.0 * Scale, +50.0 * Scale) - polygon[1]).Length));
 
             polygon = solution[1];
             Assert.AreEqual(2, polygon.Count);
             polygon.OrderBottomLeftFirst();
+            Assert.AreEqual(PolygonOrientation.CounterClockwise, polygon.Orientation);
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+50.0 * Scale, +40.0 * Scale) - polygon[0]).Length));
             Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+50.0 * Scale, +50.0 * Scale) - polygon[1]).Length));
+        }
+
+        [TestMethod]
+        public void OpenSubject3ClipTest()
+        {
+            var subject = new PolygonPath(new Polygon(new[]
+            {
+                new DoublePoint(+00.0, -10.0),
+                new DoublePoint(+00.0, +00.0),
+                new DoublePoint(+30.0, +30.0),
+                new DoublePoint(+60.0, +00.0),
+                new DoublePoint(+60.0, -10.0)
+            }.Select(p => new IntPoint(p * Scale)))
+            {
+                IsClosed = false
+            });
+
+            var clip = new PolygonPath(new Polygon(new[]
+            {
+                new DoublePoint(+10.0, +50.0),
+                new DoublePoint(+10.0, +00.0),
+                new DoublePoint(+50.0, +00.0),
+                new DoublePoint(+50.0, +50.0)
+            }.Select(p => new IntPoint(p * Scale))));
+
+            var tree = new PolygonTree();
+            Assert.IsTrue(new Clipper.Clipper().Execute(ClipOperation.Intersection, subject, clip, tree));
+
+            var solution = PolygonPath.FromTree(tree);
+
+            Assert.AreEqual(1, solution.Count);
+
+            var polygon = solution[0];
+
+            Assert.AreEqual(3, polygon.Count);
+            Assert.AreEqual(PolygonOrientation.CounterClockwise, polygon.Orientation);
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+50.0 * Scale, +10.0 * Scale) - polygon[0]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+30.0 * Scale, +30.0 * Scale) - polygon[1]).Length));
+            Assert.IsTrue(GeometryHelper.NearZero((new IntPoint(+10.0 * Scale, +10.0 * Scale) - polygon[2]).Length));
         }
 
         [TestMethod]
