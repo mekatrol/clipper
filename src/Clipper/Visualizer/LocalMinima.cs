@@ -6,5 +6,5 @@
         public Edge LeftBound;
         public Edge RightBound;
         public LocalMinima Next;
-    };
+    }
 }

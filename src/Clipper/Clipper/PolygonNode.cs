@@ -22,21 +22,21 @@ namespace Clipper
         /// <summary>
         /// This children polygons contained within this node polygon.
         /// </summary>
-        internal List<PolygonNode> Children { get; set; } = new List<PolygonNode>();
+        public List<PolygonNode> Children { get; set; } = new List<PolygonNode>();
 
         /// <summary>
         /// Returns true if this node is a hole.
         /// </summary>
-        internal bool IsHole => IsHoleNode();
+        public bool IsHole => IsHoleNode();
 
         /// <summary>
         /// True is this node polygon is an open (not closed) polygon.
         /// </summary>
-        internal bool IsOpen { get; set; }
+        public bool IsOpen { get; set; }
 
-        internal JoinType JoinType { get; set; }
+        public JoinType JoinType { get; set; }
 
-        internal EndType EndType { get; set; }
+        public EndType EndType { get; set; }
 
         internal void AddChild(PolygonNode child)
         {

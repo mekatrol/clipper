@@ -7,7 +7,7 @@ namespace Clipper
     ///    Int128 val3 = val1 * val2;
     ///    val3.ToString => "85070591730234615847396907784232501249" (8.5e+37)
     /// </summary>
-    internal struct Int128
+    public struct Int128
     {
         private long _hi;
         private ulong _lo;

@@ -5,17 +5,17 @@ namespace Clipper
         /// <summary>
         /// The edge most bottom point.
         /// </summary>
-        internal IntPoint Bottom;
+        public IntPoint Bottom;
 
         /// <summary>
         /// The edge top point.
         /// </summary>
-        internal IntPoint Top;
+        public IntPoint Top;
 
         /// <summary>
         /// Delta between top and bottom points.
         /// </summary>
-        internal IntPoint Delta;
+        public IntPoint Delta;
 
         /// <summary>
         /// The current working point for the edge, updated for each scanbeam.

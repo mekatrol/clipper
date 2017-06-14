@@ -1,13 +1,13 @@
 namespace Clipper
 {
-    internal class OutputPoint
+    public class OutputPoint
     {
-        internal int Index;
-        internal IntPoint Point;
-        internal OutputPoint Next;
-        internal OutputPoint Prev;
+        public int Index;
+        public IntPoint Point;
+        public OutputPoint Next;
+        public OutputPoint Prev;
 
-        internal double Area
+        public double Area
         {
             get
             {
