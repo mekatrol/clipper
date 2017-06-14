@@ -32,7 +32,7 @@ namespace Visualizer
 
         private SolutionType _solutionType = SolutionType.Test;
         private Dictionary<int, ClipExecutionData> _testData;
-        private int _testNumber = 23;
+        private int _testNumber = 4;
 
         public ViewFilterControl()
         {
