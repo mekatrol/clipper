@@ -43,6 +43,8 @@ namespace Visualizer
         {
             base.OnLoad(e);
 
+            if (DesignMode) return;
+
             // Load unit test data.
             _testData = LoadTestHelper.LoadFromFile("../../../UnitTests/TestData/tests.txt");
 

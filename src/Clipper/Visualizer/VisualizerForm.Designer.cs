@@ -49,12 +49,13 @@
             // splitContainer1.Panel1
             // 
             this.splitContainer1.Panel1.Controls.Add(this.ViewFilterControl);
+            this.splitContainer1.Panel1MinSize = 53;
             // 
             // splitContainer1.Panel2
             // 
             this.splitContainer1.Panel2.Controls.Add(this.ClipperViewControl);
             this.splitContainer1.Size = new System.Drawing.Size(1331, 438);
-            this.splitContainer1.SplitterDistance = 36;
+            this.splitContainer1.SplitterDistance = 56;
             this.splitContainer1.TabIndex = 0;
             // 
             // ViewFilterControl
@@ -64,7 +65,7 @@
             this.ViewFilterControl.Font = new System.Drawing.Font("Consolas", 9.75F);
             this.ViewFilterControl.Location = new System.Drawing.Point(0, 0);
             this.ViewFilterControl.Name = "ViewFilterControl";
-            this.ViewFilterControl.Size = new System.Drawing.Size(1331, 36);
+            this.ViewFilterControl.Size = new System.Drawing.Size(1331, 56);
             this.ViewFilterControl.TabIndex = 0;
             // 
             // ClipperViewControl
@@ -74,7 +75,7 @@
             this.ClipperViewControl.Font = new System.Drawing.Font("Consolas", 9.75F);
             this.ClipperViewControl.Location = new System.Drawing.Point(0, 0);
             this.ClipperViewControl.Name = "ClipperViewControl";
-            this.ClipperViewControl.Size = new System.Drawing.Size(1331, 398);
+            this.ClipperViewControl.Size = new System.Drawing.Size(1331, 378);
             this.ClipperViewControl.TabIndex = 0;
             // 
             // VisualizerForm
