@@ -5,7 +5,7 @@ namespace Clipper
 {
     public static class GeometryHelper
     {
-        public const double Tolerance = Double.Epsilon;
+        public const double Tolerance = double.Epsilon;
         public const double PolygonScaleConstant = 1E7;
         public const double PolygonScaleInverseConstant = 1 / PolygonScaleConstant;
         public const double PolygonColinearityScaleConstant = 1000.0 * PolygonScaleConstant;
@@ -120,6 +120,12 @@ namespace Clipper
         public static bool NearZero(double val)
         {
             return val > -Tolerance && val < Tolerance;
+        }
+
+        public static bool NearEqual(double val1, double val2)
+        {
+            var delta = (val1 - val2);
+            return delta > -Tolerance && delta < Tolerance;
         }
 
         /// <summary>
