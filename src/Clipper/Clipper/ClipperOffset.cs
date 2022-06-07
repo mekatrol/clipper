@@ -19,9 +19,9 @@ namespace Clipper
         public double MiterLimit { get; set; }
 
         private const double TwpPi = Math.PI * 2;
-        private const double DefaulArcTolerance = 0.25;
+        private const double DefaultArcTolerance = 0.25;
 
-        public ClipperOffset(double miterLimit = 2.0, double arcTolerance = DefaulArcTolerance)
+        public ClipperOffset(double miterLimit = 2.0, double arcTolerance = DefaultArcTolerance)
         {
             MiterLimit = miterLimit;
             ArcTolerance = arcTolerance;
@@ -180,11 +180,11 @@ namespace Clipper
             double y;
             if (ArcTolerance <= 0.0)
             {
-                y = DefaulArcTolerance;
+                y = DefaultArcTolerance;
             }
-            else if (ArcTolerance > Math.Abs(delta) * DefaulArcTolerance)
+            else if (ArcTolerance > Math.Abs(delta) * DefaultArcTolerance)
             {
-                y = Math.Abs(delta) * DefaulArcTolerance;
+                y = Math.Abs(delta) * DefaultArcTolerance;
             }
             else
             {
