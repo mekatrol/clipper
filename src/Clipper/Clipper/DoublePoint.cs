@@ -29,7 +29,7 @@ namespace Clipper
         public bool Equals(DoublePoint other)
         {
             return
-                Math.Abs(X - other.Y) < GeometryHelper.Tolerance &&
+                Math.Abs(X - other.X) < GeometryHelper.Tolerance &&
                 Math.Abs(Y - other.Y) < GeometryHelper.Tolerance;
         }
 
@@ -50,7 +50,7 @@ namespace Clipper
         public static bool operator ==(DoublePoint a, DoublePoint b)
         {
             return
-                Math.Abs(a.X - b.Y) < GeometryHelper.Tolerance &&
+                Math.Abs(a.X - b.X) < GeometryHelper.Tolerance &&
                 Math.Abs(a.Y - b.Y) < GeometryHelper.Tolerance;
         }
 
